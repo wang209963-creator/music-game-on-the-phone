@@ -442,7 +442,7 @@
             </div>
             <div class="fp-step">
                 <div class="fp-step-num">2</div>
-                <div class="fp-step-text">若已有 <strong>歌名.levelpack</strong>（或舊版 .json）關卡整合檔，點「<strong>匯入現有關卡</strong>」可批次載入（可多選）。</div>
+                <div class="fp-step-text">若已有 <strong>歌名-歌手名.levelpack.json</strong>（或舊版 .levelpack／.json）關卡整合檔，點「<strong>匯入現有關卡</strong>」可批次載入（可多選）。</div>
             </div>
             <div class="fp-step">
                 <div class="fp-step-num">3</div>
@@ -850,9 +850,9 @@
         //  📁 關卡資料夾系統 (Folder-First Storage)
         //
         //  核心策略：
-        //  · 所有關卡以「關卡整合包 歌名.levelpack」形式存放在玩家指定的資料夾（相容讀取舊版 .json 命名）
+        //  · 所有關卡以「關卡整合包 歌名-歌手名.levelpack.json」形式存放在玩家指定的資料夾（相容讀取舊版 .levelpack／.json 命名）
         //  · IndexedDB 只存 highscores/highranks（輕量，永不存音訊 Blob）
-        //  · 啟動時掃描資料夾 → 載入所有 *.levelpack（相容 *.json）→ 填充 allSongsData
+        //  · 啟動時掃描資料夾 → 載入所有 *.levelpack.json（相容 *.levelpack、*.json）→ 填充 allSongsData
         //  · 下載 = 寫入資料夾；上傳 = 從資料夾讀檔（或傳統 <input> 備援）
         // ====================================================================
 
@@ -1087,12 +1087,13 @@
                 const promises = rows.map(row => new Promise(resolve => {
                     const { fileName, pkg } = row;
                     if (!pkg || pkg.format !== LEVEL_PACKAGE_FORMAT) { resolve(); return; }
-                    const storeKey = `${pkg.name}_${pkg.singer || '未知歌手'}`;
+                    const normalizedSinger = normalizeSingerString(pkg.singer);
+                    const storeKey = `${pkg.name}_${normalizedSinger}`;
                     loadScoresFromDB(storeKey, (scoreRec) => {
                         const songRecord = {
                             name_singer: storeKey,
                             name: pkg.name,
-                            singer: pkg.singer || '未知歌手',
+                            singer: normalizedSinger,
                             lyric: pkg.lyric || '',
                             charts: pkg.charts || {},
                             highscores: scoreRec.highscores || {},
@@ -1101,9 +1102,9 @@
                             _audio_pkg: pkg.audio,
                             _fileName: fileName,
                         };
-                        (pkg.singer ? pkg.singer.split(' & ') : ['未知歌手']).forEach(s => {
-                            allSongsData[`${s.trim()}///${pkg.name}`] = songRecord;
-                            registerNewSingerToPool(s.trim());
+                        splitSingers(normalizedSinger).forEach(s => {
+                            allSongsData[`${s}///${pkg.name}`] = songRecord;
+                            registerNewSingerToPool(s);
                         });
                         folderLevelIndex[storeKey] = { record: songRecord, fileName };
                         resolve();
@@ -1127,13 +1128,14 @@
                             const text = await file.text();
                             const pkg = JSON.parse(text);
                             if (!pkg || pkg.format !== LEVEL_PACKAGE_FORMAT) return;
-                            const storeKey = `${pkg.name}_${pkg.singer || '未知歌手'}`;
+                            const normalizedSinger = normalizeSingerString(pkg.singer);
+                            const storeKey = `${pkg.name}_${normalizedSinger}`;
                             await new Promise(resolve => {
                                 loadScoresFromDB(storeKey, (scoreRec) => {
                                     const songRecord = {
                                         name_singer: storeKey,
                                         name: pkg.name,
-                                        singer: pkg.singer || '未知歌手',
+                                        singer: normalizedSinger,
                                         lyric: pkg.lyric || '',
                                         charts: pkg.charts || {},
                                         highscores: scoreRec.highscores || {},
@@ -1142,9 +1144,9 @@
                                         _audio_pkg: pkg.audio,
                                         _fileName: name,
                                     };
-                                    (pkg.singer ? pkg.singer.split(' & ') : ['未知歌手']).forEach(s => {
-                                        allSongsData[`${s.trim()}///${pkg.name}`] = songRecord;
-                                        registerNewSingerToPool(s.trim());
+                                    splitSingers(normalizedSinger).forEach(s => {
+                                        allSongsData[`${s}///${pkg.name}`] = songRecord;
+                                        registerNewSingerToPool(s);
                                     });
                                     folderLevelIndex[storeKey] = { record: songRecord, fileName: name };
                                     resolve();
@@ -1229,7 +1231,9 @@
                     const text = await file.text();
                     const pkg = JSON.parse(text);
                     if (!pkg || pkg.format !== LEVEL_PACKAGE_FORMAT || !pkg.audio || !pkg.charts) { fail++; continue; }
-                    const fileName = generateLevelPackFileName(pkg.name);
+                    // 🛠️ 修正：正規化歌手欄位，避免「歌手1&歌手2」等分隔符號不一致的舊格式被原樣存入
+                    pkg.singer = normalizeSingerString(pkg.singer);
+                    const fileName = generateLevelPackFileName(pkg.name, pkg.singer);
                     await idbSaveLevelPkg(fileName, pkg);
                     ok++;
                 } catch(err) { fail++; }
@@ -1297,10 +1301,10 @@
         }
 
         // ── 寫入關卡包到資料夾（或 APK 模式下的 IDB）──────────────────────
-        // 檔名一律根據歌名自動產生為「歌名.levelpack」；oldFileName 僅用於：
-        // 若舊檔名與新檔名不同（例如歌名被更改，或舊關卡是舊版 .json 命名），寫入成功後會清除舊檔，避免留下重複檔案。
+        // 檔名一律根據歌名+歌手名自動產生為「歌名-歌手名.levelpack.json」；oldFileName 僅用於：
+        // 若舊檔名與新檔名不同（例如歌名/歌手被更改，或舊關卡是舊版 .levelpack／.json 命名），寫入成功後會清除舊檔，避免留下重複檔案。
         async function writeLevelPackageToFolder(pkgObj, oldFileName) {
-            const fileName = generateLevelPackFileName(pkgObj.name);
+            const fileName = generateLevelPackFileName(pkgObj.name, pkgObj.singer);
             if (APK_MODE) {
                 // APK 模式：存入 IDB
                 const ok = await idbSaveLevelPkg(fileName, pkgObj);
@@ -1394,9 +1398,9 @@
                 if (!newRecord.highranks[diffTag]) newRecord.highranks[diffTag] = '⚪ Rank C';
                 if (!newRecord.highpercents[diffTag]) newRecord.highpercents[diffTag] = '0.00%';
                 folderLevelIndex[storeKey] = { record: newRecord, fileName: savedFileName };
-                (levelSinger.split(' & ')).forEach(s => {
-                    allSongsData[`${s.trim()}///${levelName}`] = newRecord;
-                    registerNewSingerToPool(s.trim());
+                splitSingers(levelSinger).forEach(s => {
+                    allSongsData[`${s}///${levelName}`] = newRecord;
+                    registerNewSingerToPool(s);
                 });
 
                 alert(`✅ 關卡「${levelName}」[${diffTag}] 已儲存到資料夾！`);
@@ -1497,6 +1501,19 @@
             box.appendChild(row);
         }
 
+        // 🛠️ 修正：合唱歌手容錯拆分。外部匯入的關卡整合檔（例如線上關卡資料庫、舊版工具匯出的檔案）
+        // 有可能用「&」「＆」「,」「、」「/」等不同分隔符號、甚至前後沒有空白來連接多位歌手名稱，
+        // 若只用固定的 " & "（含空白）去 split，會整串被當成同一位歌手，畫面上就會出現
+        // 「歌手1&歌手2」這種沒有拆開、格式跑掉的錯誤。這裡統一用較寬鬆的規則拆分，並在存入前正規化。
+        function splitSingers(str) {
+            if (!str) return [];
+            return str.toString().split(/\s*[&＆,，、\/]\s*/).map(s => s.trim()).filter(s => s !== "");
+        }
+        function normalizeSingerString(str) {
+            const arr = splitSingers(str);
+            if (arr.length === 0) return "未知歌手";
+            return [...new Set(arr)].join(" & ");
+        }
         function registerNewSingerToPool(name) { if (!globalSingerPool.includes(name)) { globalSingerPool.push(name); localStorage.setItem("rhythm_singer_pool", JSON.stringify(globalSingerPool)); } }
         function updateAllSingerSelects(newValue, targetSelectElement) {
             document.querySelectorAll('.dynamic-singer-select').forEach(sel => {
@@ -1511,8 +1528,10 @@
             if (array.length === 0) return "未知歌手"; return [...new Set(array)].join(" & ");
         }
         function syncSingerDropdownsByString(singerStr) {
-            const box = document.getElementById('singer-global-box'); box.innerHTML = ""; if (!singerStr) { createSingerRow(true, "未知歌手"); return; }
-            singerStr.split(" & ").forEach((singerName, index) => { registerNewSingerToPool(singerName); updateAllSingerSelects(singerName, null); createSingerRow(index === 0, singerName); });
+            const box = document.getElementById('singer-global-box'); box.innerHTML = "";
+            const names = splitSingers(singerStr);
+            if (names.length === 0) { createSingerRow(true, "未知歌手"); return; }
+            names.forEach((singerName, index) => { registerNewSingerToPool(singerName); updateAllSingerSelects(singerName, null); createSingerRow(index === 0, singerName); });
         }
 
         function syncVolumeControls(musicVol, sfxVol) {
@@ -1937,7 +1956,7 @@
 
                 entry.fileName = savedFileName;
                 record._fileName = savedFileName;
-                (record.singer.split(' & ')).forEach(s => { allSongsData[`${s.trim()}///${record.name}`] = record; });
+                splitSingers(record.singer).forEach(s => { allSongsData[`${s}///${record.name}`] = record; });
 
                 alert('✅ 已儲存修改！');
                 closeEditModModal();
@@ -1993,14 +2012,16 @@
             return result;
         }
 
-        // 🏷️ 關卡整合檔統一命名規則：下載或保存關卡時，檔名一律使用「歌名.levelpack」
+        // 🏷️ 關卡整合檔統一命名規則：下載或保存關卡時，檔名一律使用「歌名-歌手名.levelpack.json」
         function sanitizeSongNameForFile(name) {
             const base = (name || '未命名歌曲').toString().trim() || '未命名歌曲';
-            // 移除檔案系統不允許的字元，保留中日文、英數字、空白、底線、連字號
-            return base.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim() || '未命名歌曲';
+            // 移除檔案系統不允許的字元（含會與檔名分隔符號「-」混淆的連字號），保留中日文、英數字、空白、底線
+            return base.replace(/[\\/:*?"<>|]/g, '_').replace(/-/g, '_').replace(/\s+/g, ' ').trim() || '未命名歌曲';
         }
-        function generateLevelPackFileName(songName) {
-            return `${sanitizeSongNameForFile(songName)}.levelpack`;
+        function generateLevelPackFileName(songName, singerName) {
+            const safeSong = sanitizeSongNameForFile(songName);
+            const safeSinger = sanitizeSongNameForFile(singerName || '未知歌手');
+            return `${safeSong}-${safeSinger}.levelpack.json`;
         }
 
         let pendingDownloadPackage = null;
@@ -2023,8 +2044,8 @@
                     audio: audioPkg
                 };
 
-                // 檔名一律為「歌名.levelpack」
-                const fileName = generateLevelPackFileName(songRecord.name);
+                // 檔名一律為「歌名-歌手名.levelpack.json」
+                const fileName = generateLevelPackFileName(songRecord.name, songRecord.singer);
                 const oldFileName = songRecord._fileName;
 
                 // 優先：直接寫入資料夾
@@ -2102,7 +2123,7 @@
             window.open('https://wang209963-creator.github.io/music-game-database/', '_blank');
         });
 
-        // 上傳按鈕：從 <input file> 選取 歌名.levelpack（或舊版 .json），存入資料夾並載入
+        // 上傳按鈕：從 <input file> 選取 歌名-歌手名.levelpack.json（或舊版 .levelpack／.json），存入資料夾並載入
         document.getElementById('upload-level-btn').addEventListener('click', () => {
             document.getElementById('upload-level-input').click();
         });
@@ -2126,7 +2147,10 @@
                 if (Object.keys(packageData.charts).length === 0) { throw new Error("整合檔內沒有任何難度的譜面資料"); }
 
                 const levelName = (packageData.name || "未命名歌曲").trim() || "未命名歌曲";
-                const levelSinger = (packageData.singer || "未知歌手").trim() || "未知歌手";
+                // 🛠️ 修正：外部匯入的整合檔可能用「&」等各種分隔符號連接多位歌手（甚至沒有空白），
+                // 這裡正規化成統一格式，避免歌手欄出現「歌手1&歌手2」沒被拆開的錯誤
+                const levelSinger = normalizeSingerString(packageData.singer);
+                packageData.singer = levelSinger; // 連同寫回檔案的資料一併修正，避免壞格式被再次存回
                 const storeKey = `${levelName}_${levelSinger}`;
 
                 const isNew = !folderLevelIndex[storeKey];
@@ -2141,7 +2165,7 @@
                     });
                 }
 
-                // 檔名一律為「歌名.levelpack」；若既有關卡的舊檔名不同，寫入成功後會自動清除舊檔
+                // 檔名一律為「歌名-歌手名.levelpack.json」；若既有關卡的舊檔名不同，寫入成功後會自動清除舊檔
                 let savedFileName = null;
                 if (levelFolderHandle) {
                     savedFileName = await writeLevelPackageToFolder(packageData, existingFileName);
@@ -2149,7 +2173,7 @@
 
                 // 若無資料夾且非 APK 模式，退回傳統分享/下載模式
                 if (!savedFileName && !APK_MODE) {
-                    const fallbackFileName = generateLevelPackFileName(levelName);
+                    const fallbackFileName = generateLevelPackFileName(levelName, levelSinger);
                     const blob = new Blob([JSON.stringify(packageData)], { type: 'application/octet-stream' });
                     triggerFileSave(blob, fallbackFileName);
                     alert(`✅ 關卡「${levelName}」解析成功！（資料夾未授權，已改用傳統下載方式輸出）`);
@@ -2176,9 +2200,9 @@
                     if (!newRecord.highpercents[d]) newRecord.highpercents[d] = '0.00%';
                 });
                 folderLevelIndex[storeKey] = { record: newRecord, fileName: savedFileName };
-                (levelSinger.split(' & ')).forEach(s => {
-                    allSongsData[`${s.trim()}///${levelName}`] = newRecord;
-                    registerNewSingerToPool(s.trim());
+                splitSingers(levelSinger).forEach(s => {
+                    allSongsData[`${s}///${levelName}`] = newRecord;
+                    registerNewSingerToPool(s);
                 });
 
                 alert(`✅ 關卡「${levelName}」${isNew ? '已匯入' : '已合併更新'}，並存入關卡資料夾！`);
