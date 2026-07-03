@@ -1,0 +1,3112 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>4K 大間隔音遊 - 專業選歌與連擊分版</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    
+    <style>
+        * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background-color: #0d0d11;
+            color: #ffffff;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 主畫面：設定介面 */
+        #setup-container {
+            display: none;
+            width: 95%;
+            max-width: 850px;
+            max-height: 95vh;
+            background: #1c1c24;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            z-index: 10;
+            overflow-y: auto;
+            touch-action: pan-y; 
+        }
+
+        .setup-layout {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) or (orientation: portrait) {
+            .setup-layout { grid-template-columns: 1fr; }
+        }
+
+        .input-group { margin-bottom: 12px; }
+        .input-group label {
+            display: block; margin-bottom: 6px; font-weight: bold; color: #00e5ff; font-size: 14px;
+        }
+
+        .singer-dynamic-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: #14141c;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            overflow-y: auto;
+            max-height: 120px;
+            touch-action: pan-y;
+        }
+        .singer-row-item {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        select, input[type="file"], textarea, input[type="text"], input[type="number"] {
+            width: 100%; padding: 8px 10px; background: #2d2d3a; border: 1px solid #444; color: #fff; border-radius: 6px; font-size: 13px;
+        }
+        input[type="range"] {
+            width: 100%;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+            border: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            height: 20px;
+            vertical-align: middle;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 6px;
+            background: #444466;
+            border-radius: 3px;
+            border: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00e5ff;
+            margin-top: -6px;
+            border: none;
+            box-shadow: 0 0 4px rgba(0,229,255,0.6);
+        }
+        input[type="range"]::-moz-range-track {
+            height: 6px;
+            background: #444466;
+            border-radius: 3px;
+            border: none;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00e5ff;
+            border: none;
+            box-shadow: 0 0 4px rgba(0,229,255,0.6);
+        }
+        textarea { height: 45px; resize: none; }
+
+        .add-singer-btn, .delete-singer-db-btn, .remove-singer-btn {
+            color: #fff; border: none; padding: 0 10px; height: 33px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; white-space: nowrap;
+        }
+        .add-singer-btn { background: #9c27b0; }
+        .delete-singer-db-btn { background: #f44336; transition: background 0.2s; }
+        .delete-singer-db-btn:hover { background: #d32f2f; }
+        .remove-singer-btn { background: #d32f2f; }
+
+        .main-btn-group { display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+        .menu-btn {
+            width: 100%; padding: 13px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; border: none; transition: background 0.2s;
+        }
+        #start-btn { background: #00e5ff; color: #000; font-size: 18px; }
+        #save-btn { background: #4caf50; color: #fff; }
+        #level-btn { background: #ff9800; color: #fff; }
+        #settings-btn { background: #607d8b; color: #fff; }
+
+        /* 彈出層：關卡選單 */
+        #level-modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #1e1e2a; border: 3px solid #3d3d52; border-radius: 16px;
+            width: 95%; max-width: 800px; height: 90vh; max-height: 600px; z-index: 100;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.9); padding: 25px; flex-direction: column;
+            overflow: hidden; touch-action: pan-y !important; 
+        }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #3d3d52; padding-bottom: 12px; margin-bottom: 15px; gap: 10px; }
+        .modal-title { font-size: 20px; color: #ff9800; font-weight: bold; margin: 0; }
+        .search-box { width: 170px; padding: 6px 12px; background: #111116; border: 1px solid #555; color: #fff; border-radius: 20px; font-size: 13px; }
+        .modal-header-actions { display: flex; align-items: center; gap: 8px; }
+        .upload-level-btn {
+            background: #00c853; color: #fff; border: none; padding: 7px 14px; font-size: 12px; font-weight: bold; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: background 0.2s;
+        }
+        .upload-level-btn:hover { background: #00e676; }
+        .online-levels-btn {
+            background: #7c4dff; color: #fff; border: none; padding: 7px 14px; font-size: 12px; font-weight: bold; border-radius: 20px; cursor: pointer; white-space: nowrap; transition: background 0.2s;
+        }
+        .online-levels-btn:hover { background: #9670ff; }
+
+        #level-list-content { 
+            flex: 1; overflow-y: auto !important; margin-bottom: 12px; padding-right: 5px; touch-action: pan-y !important; -webkit-overflow-scrolling: touch; 
+        }
+
+        .singer-group-header {
+            background: #14141c; border-left: 4px solid #9c27b0; color: #e040fb; padding: 8px 12px; font-weight: bold; font-size: 14px; margin-top: 10px; margin-bottom: 5px; border-radius: 0 6px 6px 0; word-break: break-all; line-height: 1.4;
+        }
+        
+        .song-item-row {
+            background: #282836; border: 1px solid #44445c; border-radius: 8px; padding: 10px 15px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; transition: background 0.2s;
+        }
+        .song-item-row:hover { background: #323244; }
+        
+        .song-info-clickable { flex: 1; min-width: 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+        .song-title-wrap { flex: 1; min-width: 0; word-break: break-all; }
+        .song-title-main { font-size: 16px; font-weight: bold; color: #fff; display: block; }
+        .song-diff-tags-dis { color: #888; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+
+        .delete-level-btn {
+            background: #c62828; color: #fff; border: none; padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; flex-shrink: 0; transition: background 0.2s; z-index: 10;
+        }
+        .delete-level-btn:hover { background: #e53935; }
+
+        /* 難度選擇子檢視區 */
+        #difficulty-select-subview {
+            display: none; flex: 1; grid-template-columns: 1fr 140px; gap: 24px; padding: 5px 0; height: 100%; min-height: 0; touch-action: pan-y;
+        }
+
+        .subview-left-card {
+            position: relative; background: #15151e; border: 1px solid #28283a; border-radius: 16px; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.6);
+        }
+        .edit-mod-btn {
+            position: absolute; left: 14px; bottom: 14px; background: #2d2d3a; color: #ffcc00; border: 1px solid #555; border-radius: 8px; padding: 7px 12px; font-size: 12px; font-weight: bold; cursor: pointer; z-index: 5;
+        }
+        .edit-mod-btn:hover { background: #3d3d50; border-color: #ffcc00; }
+
+        #editmod-modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center;
+        }
+        .editmod-box {
+            background: #1c1c24; border: 1px solid #333; border-radius: 12px; padding: 20px; width: 90%; max-width: 360px; box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        }
+        .editmod-box h4 { margin: 0 0 12px 0; color: #ffcc00; text-align: center; }
+        .editmod-row { margin-bottom: 12px; }
+        .editmod-row label { display: block; margin-bottom: 6px; font-size: 13px; color: #00e5ff; font-weight: bold; }
+        .editmod-pick-btn {
+            width: 100%; padding: 10px; margin-bottom: 8px; border: none; border-radius: 8px; background: #2d2d3a; color: #fff; font-size: 13px; font-weight: bold; cursor: pointer; text-align: left;
+        }
+        .editmod-pick-btn:hover { background: #3d3d50; }
+        .editmod-pick-btn.active { background: #00897b; }
+        .editmod-close-btn {
+            width: 100%; padding: 10px; margin-top: 6px; border: none; border-radius: 8px; background: #55566a; color: #fff; font-size: 13px; font-weight: bold; cursor: pointer;
+        }
+        .editmod-confirm-btn {
+            width: 100%; padding: 10px; margin-top: 4px; border: none; border-radius: 8px; background: #4caf50; color: #fff; font-size: 13px; font-weight: bold; cursor: pointer;
+        }
+        #editmod-lyric-text {
+            width: 100%; box-sizing: border-box; height: 90px; background: #1a1a28; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 8px; font-size: 12px; resize: vertical;
+        }
+        .subview-card-title { font-size: 26px; font-weight: bold; color: #fff; margin: 0 0 4px 0; word-break: break-all; letter-spacing: 1px; }
+        .subview-card-singer { font-size: 13px; color: #9b8bf7; margin: 0 0 14px 0; word-break: break-all; opacity: 0.9; }
+        .subview-card-highscore { font-size: 14px; color: #ffcc00; margin: 8px 0; font-weight: bold; background: rgba(0,0,0,0.4); padding: 6px 16px; border-radius: 20px; border: 1px dashed #ffcc00; white-space: pre-line; text-align: center; }
+
+        .marathon-settings-box {
+            background: #1f1f2e; border: 1px solid #3d3d52; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: none; flex-direction: column; gap: 8px; width: 100%; max-width: 320px; text-align: left;
+        }
+        .marathon-cfg-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #e040fb; }
+        .marathon-cfg-row label { display: flex; align-items: center; gap: 6px; font-weight: bold; cursor: pointer; user-select: none; }
+        .marathon-cfg-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+        .marathon-cfg-row input[type="number"] { width: 60px; padding: 3px 6px; background: #2d2d3a; border: 1px solid #555; color: #fff; text-align: center; border-radius: 4px; }
+
+        .subview-right-sidebar {
+            display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center; border-left: 1px solid #2d2d3d; padding-left: 20px; height: 100%;
+        }
+        .sidebar-diff-label { font-size: 11px; color: #717185; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+        
+        .diff-circle-btn {
+            width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; font-family: Arial, sans-serif; box-shadow: 0 5px 12px rgba(0,0,0,0.4); transition: transform 0.15s, box-shadow 0.15s; position: relative;
+        }
+        .diff-circle-btn:active { transform: scale(0.9); }
+        .diff-circle-btn::after {
+            content: attr(data-hover-text); position: absolute; right: 68px; background: rgba(0,0,0,0.85); color: #fff; font-size: 11px; font-weight: bold; padding: 5px 9px; border-radius: 4px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; border: 1px solid #444;
+        }
+        .diff-circle-btn:hover::after { opacity: 1; }
+
+        .diff-c-easy { background: #4caf50; color: #fff; }
+        .diff-c-normal { background: #ff9800; color: #fff; }
+        .diff-c-hard { background: #e91e63; color: #fff; }
+        .diff-c-special { background: linear-gradient(135deg, #7b1fa2, #00e5ff); color: #fff; }
+        .diff-c-disabled { background: #22222a !important; color: #444452 !important; cursor: not-allowed; opacity: 0.15; box-shadow: none; }
+        .diff-c-disabled:hover::after { display: none; }
+
+        .subview-back-btn {
+            background: rgba(255, 255, 255, 0.05); color: #aaa; border: 1px solid #3a3a4e; padding: 8px 16px; font-size: 13px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.2s;
+        }
+        .subview-back-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; border-color: #555; }
+
+        .subview-download-btn {
+            background: #2962ff; color: #fff; border: none; padding: 8px 14px; font-size: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; width: 100%; margin-top: 8px;
+        }
+        .subview-download-btn:hover { background: #448aff; }
+        .subview-download-btn:disabled { background: #333344; color: #666; cursor: not-allowed; }
+        .subview-download-btn-ready { background: #00c853 !important; animation: pulse-ready 1.2s infinite; }
+        .subview-download-btn-ready:hover { background: #00e676 !important; }
+        @keyframes pulse-ready { 0%, 100% { box-shadow: 0 0 0 0 rgba(0, 200, 83, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(0, 200, 83, 0); } }
+
+        .modal-footer { display: flex; justify-content: space-between; align-items: center; border-top: 2px solid #3d3d52; padding-top: 10px; }
+        .nav-btn { background: #343446; color: #fff; border: none; padding: 8px 16px; font-size: 14px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        #game-container { display: none; position: relative; background: #050508; overflow: hidden; touch-action: none; }
+        @media (orientation: landscape) { #game-container { width: 1024px; height: 576px; border: 2px solid #333; border-radius: 8px; } }
+        @media (orientation: portrait) { #game-container { width: 100vw; height: 100vh; border: none; border-radius: 0; } }
+
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        #lyric-container { position: absolute; left: 0; width: 100%; z-index: 2; text-align: center; pointer-events: none; display: flex; justify-content: center; }
+        #lyric-text {
+            display: inline-block; background: rgba(5, 5, 10, 0.9); color: #ffffff; padding: 8px 20px; border-radius: 8px; font-size: 22px; font-weight: bold; border-bottom: 3px solid #00e5ff; text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+        }
+
+        #touch-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; }
+        .touch-zone { position: absolute; cursor: pointer; }
+        #ingame-panel { position: absolute; z-index: 5; display: none; }
+        .action-btn { background: rgba(20, 20, 30, 0.9); color: #00e5ff; border: 2px solid #00e5ff; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+
+        /* 暫停選單 */
+        #pause-menu {
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(15, 15, 25, 0.98); border: 2px solid #ff3333; padding: 25px 30px; border-radius: 12px; text-align: center; z-index: 6; width: 320px;
+        }
+        .pause-setting-row { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 14px; text-align: left; }
+        .pause-setting-row label { color: #00e5ff; font-weight: bold; width: 70px; flex-shrink: 0; }
+        .pause-setting-row input[type="range"] { flex: 1; min-width: 0; }
+        .pause-setting-row span { flex-shrink: 0; width: 48px; text-align: right; }
+        .pause-btn { width: 100%; background: #2d2d3a; color: #fff; border: 1px solid #555; padding: 12px; font-size: 16px; font-weight: bold; margin: 8px 0; border-radius: 6px; cursor: pointer; }
+
+        /* 遊戲參數設定彈窗 */
+        #settings-modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #1e1e2a; border: 3px solid #00e5ff; border-radius: 16px; width: 90%; max-width: 480px; padding: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.9); z-index: 110; flex-direction: column; touch-action: pan-y;
+            max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; box-sizing: border-box;
+        }
+        .setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+        .setting-row label { font-size: 15px; color: #00e5ff; font-weight: bold; width: 120px; }
+        .setting-control { flex: 1; display: flex; align-items: center; gap: 10px; }
+        .setting-val-dis { width: 55px; text-align: right; font-family: monospace; font-size: 14px; color: #fff; font-weight: bold; }
+
+
+        .toggle-switch { position: relative; display: inline-block; width: 54px; height: 28px; flex-shrink: 0; }
+        .toggle-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #444; border-radius: 28px; transition: background-color 0.2s;
+        }
+        .toggle-slider::before {
+            position: absolute; content: ""; height: 22px; width: 22px; left: 3px; top: 3px;
+            background-color: #fff; border-radius: 50%; transition: transform 0.2s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background-color: #00c853; }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(26px); }
+
+        #result-screen {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 10, 15, 0.98); z-index: 8; flex-direction: column; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;
+        }
+        .result-title { font-size: 32px; color: #00e5ff; font-weight: bold; margin-bottom: 10px; text-align: center; }
+        #result-rank { font-size: 64px; font-weight: bold; margin-bottom: 15px; text-shadow: 0 0 20px rgba(0,229,255,0.6); }
+        .result-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px 30px; width: 100%; max-width: 450px; background: #171722; padding: 20px; border-radius: 10px; border: 1px solid #333; margin-bottom: 20px;
+        }
+        .result-label { font-size: 16px; color: #aaa; font-weight: bold;}
+        .result-val { font-size: 18px; font-weight: bold; text-align: right; font-family: monospace; }
+
+        /* ===== 資料夾選擇啟動畫面 ===== */
+        #folder-picker-screen {
+            display: flex;
+            position: fixed; inset: 0;
+            background: #09090d;
+            z-index: 999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            text-align: center;
+        }
+        #folder-picker-screen .fp-logo {
+            font-size: 56px; margin-bottom: 8px;
+        }
+        #folder-picker-screen h1 {
+            font-size: 22px; color: #fff; margin: 0 0 6px 0; font-weight: bold;
+        }
+        #folder-picker-screen .fp-sub {
+            font-size: 13px; color: #888; margin-bottom: 28px; max-width: 340px; line-height: 1.6;
+        }
+        #folder-picker-screen .fp-card {
+            background: #1c1c28; border: 1px solid #2e2e42; border-radius: 16px;
+            padding: 28px 24px; width: 100%; max-width: 380px;
+            display: flex; flex-direction: column; gap: 14px;
+        }
+        #folder-picker-screen .fp-step {
+            display: flex; align-items: flex-start; gap: 12px; text-align: left;
+        }
+        #folder-picker-screen .fp-step-num {
+            background: #00e5ff; color: #000; border-radius: 50%;
+            width: 24px; height: 24px; min-width: 24px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: bold; margin-top: 1px;
+        }
+        #folder-picker-screen .fp-step-text {
+            font-size: 13px; color: #ccc; line-height: 1.5;
+        }
+        #folder-picker-screen .fp-step-text strong { color: #fff; }
+        #fp-pick-btn {
+            margin-top: 6px;
+            background: linear-gradient(135deg, #00e5ff, #7b61ff);
+            color: #000; font-size: 17px; font-weight: bold;
+            border: none; border-radius: 10px; padding: 16px;
+            cursor: pointer; transition: opacity 0.2s;
+            width: 100%; max-width: 380px;
+        }
+        #fp-pick-btn:active { opacity: 0.85; }
+        #fp-status {
+            margin-top: 14px; font-size: 13px; color: #888; min-height: 20px;
+        }
+        #fp-status.ok { color: #4caf50; }
+        #fp-status.err { color: #f44336; }
+        #fp-folder-info {
+            display: none;
+            background: #1c1c28; border: 1px solid #2e2e42; border-radius: 12px;
+            padding: 14px 18px; width: 100%; max-width: 380px;
+            font-size: 13px; color: #ccc; text-align: left; margin-top: 4px;
+            line-height: 1.8;
+        }
+        #fp-folder-info span { color: #00e5ff; font-weight: bold; }
+        #fp-enter-btn {
+            display: none;
+            background: #4caf50; color: #fff; font-size: 16px; font-weight: bold;
+            border: none; border-radius: 10px; padding: 15px;
+            cursor: pointer; width: 100%; max-width: 380px; margin-top: 4px;
+            transition: background 0.2s;
+        }
+        #fp-enter-btn:active { background: #388e3c; }
+        #fp-change-folder-btn {
+            background: none; border: 1px solid #444; color: #888; font-size: 12px;
+            border-radius: 6px; padding: 6px 14px; cursor: pointer; margin-top: 2px;
+        }
+        #fp-change-folder-btn:active { background: #1c1c28; }
+    </style>
+</head>
+<body>
+
+    <!-- ===== 資料夾選擇啟動畫面 ===== -->
+    <div id="folder-picker-screen">
+        <div class="fp-logo">🎵</div>
+        <h1>4K 大間隔音遊</h1>
+        <p class="fp-sub" id="fp-sub-text">請選擇一個用來存放關卡的資料夾，<br>遊戲將在此資料夾讀取及儲存所有關卡。</p>
+
+        <!-- 桌機模式（File System Access API）說明 -->
+        <div class="fp-card" id="fp-card-desktop">
+            <div class="fp-step">
+                <div class="fp-step-num">1</div>
+                <div class="fp-step-text">在電腦上<strong>建立一個專用資料夾</strong>，例如「音遊關卡」。</div>
+            </div>
+            <div class="fp-step">
+                <div class="fp-step-num">2</div>
+                <div class="fp-step-text">點下方按鈕，<strong>選取該資料夾</strong>並授予讀寫權限。</div>
+            </div>
+            <div class="fp-step">
+                <div class="fp-step-num">3</div>
+                <div class="fp-step-text">遊戲啟動後，所有<strong>關卡下載 / 上傳</strong>都會自動存到此資料夾。</div>
+            </div>
+        </div>
+
+        <!-- APK / WebView 模式說明 -->
+        <div class="fp-card" id="fp-card-apk" style="display:none;">
+            <div class="fp-step">
+                <div class="fp-step-num">1</div>
+                <div class="fp-step-text">關卡資料<strong>儲存於 App 內部</strong>，不需手動建立資料夾。</div>
+            </div>
+            <div class="fp-step">
+                <div class="fp-step-num">2</div>
+                <div class="fp-step-text">若已有 <strong>歌名.levelpack</strong>（或舊版 .json）關卡整合檔，點「<strong>匯入現有關卡</strong>」可批次載入（可多選）。</div>
+            </div>
+            <div class="fp-step">
+                <div class="fp-step-num">3</div>
+                <div class="fp-step-text">也可直接「<strong>進入遊戲</strong>」，之後隨時在關卡清單頁面上傳新關卡。</div>
+            </div>
+        </div>
+
+        <!-- 桌機模式按鈕 -->
+        <button id="fp-pick-btn">📁 選擇關卡資料夾</button>
+        <!-- APK 模式按鈕 -->
+        <button id="fp-import-btn" style="display:none; background:linear-gradient(135deg,#ff9800,#e65100); color:#fff; font-size:15px; font-weight:bold; border:none; border-radius:10px; padding:14px; width:100%; max-width:380px; cursor:pointer; margin-top:6px;">📂 匯入現有關卡（可多選）</button>
+        <input type="file" id="fp-import-input" accept=".json,.levelpack" multiple style="display:none;">
+
+        <div id="fp-status"></div>
+
+        <div id="fp-folder-info">
+            📂 <span id="fp-folder-label">已選取資料夾：</span><span id="fp-folder-name"></span><br>
+            📦 偵測到關卡檔案：<span id="fp-file-count">0</span> 個
+        </div>
+        <button id="fp-enter-btn">▶ 進入遊戲</button>
+        <button id="fp-change-folder-btn" style="display:none;">🔄 更換資料夾</button>
+        <button id="fp-back-btn" style="display:none; background:none; border:1px solid #555; color:#aaa; font-size:13px; border-radius:8px; padding:10px 24px; cursor:pointer; margin-top:4px; max-width:380px; width:100%;">↩ 返回主選單</button>
+    </div>
+
+    <div id="setup-container">
+        <h3 style="margin: 0 0 12px 0; color:#fff; text-align:center;">🎵 4K 大間隔音遊 (合併儲存與真不重複隨機優化)</h3>
+        <div class="setup-layout">
+            <div>
+                <div class="input-group">
+                    <label>自訂歌曲名稱：</label>
+                    <input type="text" id="level-name-input" placeholder="請輸入歌曲名稱...">
+                </div>
+                
+                <div class="input-group">
+                    <label>演唱歌手陣容：</label>
+                    <div class="singer-dynamic-group" id="singer-global-box"></div>
+                    <button class="nav-btn" id="add-new-singer-row-btn" style="margin-top: 6px; width:100%; background:#7b1fa2; font-size:12px;">➕ 新增合唱歌手</button>
+                </div>
+
+                <div class="input-group">
+                    <label>1. 音樂檔案（同一首歌換難度時，若沒重新選擇，將會直接沿用舊音樂）：</label>
+                    <input type="file" id="audio-input" accept="audio/*,video/mp4,video/quicktime">
+                </div>
+                <div class="input-group">
+                    <label>2. 樂譜 JSON 檔案：</label>
+                    <input type="file" id="chart-input" accept=".json">
+                </div>
+                <div class="input-group">
+                    <label>3. 歌詞輸入：</label>
+                    <input type="file" id="lyric-file-input" accept=".docx,.pdf,.lrc,.txt" style="margin-bottom: 4px;">
+                    <textarea id="lyric-text-input" placeholder="可貼上帶時間軸的 LRC 歌詞..."></textarea>
+                </div>
+            </div>
+            <div class="main-btn-group">
+                <button class="menu-btn" id="save-btn">💾 保存/覆蓋此難度譜面</button>
+                <button class="menu-btn" id="level-btn">📂 打開關卡清單畫面</button>
+                <button class="menu-btn" id="settings-btn">⚙️ 遊戲參數設定</button>
+                <button class="menu-btn" id="start-btn">🚀 讀取配置・直接開始</button>
+                <button class="menu-btn" id="change-folder-btn" style="background:#37474f; font-size:13px; padding:10px;">📁 更換關卡資料夾</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="level-modal">
+        <div class="modal-header">
+            <h4 class="modal-title" id="modal-header-title">📊 選擇難度</h4>
+            <div class="modal-header-actions">
+                <button class="online-levels-btn" id="online-levels-btn">🌐 線上關卡網站</button>
+                <button class="upload-level-btn" id="upload-level-btn">⬆️ 上傳關卡整合檔</button>
+                <input type="file" id="upload-level-input" accept=".json,.levelpack" style="display:none;">
+                <input type="text" id="search-input" class="search-box" placeholder="🔍 搜尋關卡或歌手...">
+            </div>
+        </div>
+
+        <div id="level-list-content"></div>
+        
+        <div id="difficulty-select-subview">
+            <div class="subview-left-card">
+                <h2 id="subview-song-title" class="subview-card-title">歌曲名稱</h2>
+                <p id="subview-song-singer" class="subview-card-singer">演唱歌手：歌手名稱</p>
+                <div id="subview-song-highscore" class="subview-card-highscore">最佳紀錄：尚未挑戰</div>
+                
+                <div class="marathon-settings-box" id="subview-marathon-box">
+                    <div class="marathon-cfg-row">
+                        <label><input type="checkbox" id="cfg-endless-mode"> ♾️ 開啟無盡挑戰 (不限曲數)</label>
+                    </div>
+                    <div class="marathon-cfg-row">
+                        <label><input type="checkbox" id="cfg-true-marathon"> 🌟 真 • 接力 (遍歷所有符合條件的譜面)</label>
+                    </div>
+                    <div class="marathon-cfg-row" id="cfg-stage-count-row">
+                        <span>🎵 自選挑戰曲數：</span>
+                        <input type="number" id="cfg-stage-count" min="2" max="50" value="3">
+                    </div>
+                </div>
+
+                <div class="marathon-settings-box" id="subview-true-random-box" style="display:none; flex-direction:column; gap:10px;">
+                    <div class="marathon-cfg-row">
+                        <label><input type="checkbox" id="cfg-true-random-extra"> 🎰 真•隨機（連速度與鍵位也一起隨機）</label>
+                    </div>
+                    <p style="margin:0; font-size:12px; color:#888; text-align:center;">勾選後，點選右側任一難度即會連同速度與鍵位一起隨機</p>
+                </div>
+
+                <button class="subview-back-btn" id="sub-back-to-list">↩️ 返回歌曲列表</button>
+                <button class="edit-mod-btn" id="edit-mod-open-btn" style="display:none;">✏️ 編輯 Mod</button>
+            </div>
+            <div class="subview-right-sidebar">
+                <span class="sidebar-diff-label">DIFFICULTY</span>
+                <button class="diff-circle-btn diff-c-easy" id="sub-btn-easy" data-hover-text="EASY 易">E</button>
+                <button class="diff-circle-btn diff-c-normal" id="sub-btn-normal" data-hover-text="NORMAL 普">N</button>
+                <button class="diff-circle-btn diff-c-hard" id="sub-btn-hard" data-hover-text="HARD 難">H</button>
+                <button class="diff-circle-btn diff-c-special" id="sub-btn-special" data-hover-text="RANDOM 隨機模式">R</button>
+                <button class="subview-download-btn" id="sub-download-btn">⬇️ 下載關卡整合檔</button>
+            </div>
+        </div>
+        
+        <div class="modal-footer" id="modal-main-footer">
+            <button class="nav-btn" id="close-modal-btn" style="background:#55566a;">返回主選單</button>
+            <div style="display: flex; gap: 8px;">
+                <button class="nav-btn" id="prev-page-btn">◀ 上一頁</button>
+                <span id="page-indicator" style="color: #aaa; font-size:14px; align-self: center; font-family: monospace;">1 / 1</span>
+                <button class="nav-btn" id="next-page-btn">下一頁 ▶</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editmod-modal">
+        <div class="editmod-box">
+            <h4>✏️ 編輯 Mod 檔案</h4>
+            <div class="editmod-row" id="editmod-diff-row" style="display:none;">
+                <label>選擇要編輯樂譜的難度：</label>
+                <select id="editmod-diff-select"></select>
+            </div>
+            <button class="editmod-pick-btn" id="editmod-pick-lyric">📝 編輯歌詞</button>
+            <button class="editmod-pick-btn" id="editmod-pick-chart">🎼 編輯樂譜</button>
+            <button class="editmod-pick-btn" id="editmod-pick-audio">🎵 編輯音樂</button>
+
+            <div id="editmod-lyric-area" style="display:none;">
+                <input type="file" id="editmod-lyric-file" accept=".docx,.pdf,.lrc,.txt" style="margin-bottom:6px;">
+                <textarea id="editmod-lyric-text" placeholder="可貼上帶時間軸的 LRC 歌詞..."></textarea>
+            </div>
+            <div id="editmod-chart-area" style="display:none;">
+                <input type="file" id="editmod-chart-file" accept=".json">
+            </div>
+            <div id="editmod-audio-area" style="display:none;">
+                <input type="file" id="editmod-audio-file" accept="audio/*,video/mp4,video/quicktime">
+            </div>
+
+            <button class="editmod-confirm-btn" id="editmod-save-btn" style="display:none;">💾 儲存此項目</button>
+            <button class="editmod-close-btn" id="editmod-close-btn">關閉</button>
+        </div>
+    </div>
+
+    <div id="settings-modal">
+        <div class="modal-header"><h4 class="modal-title" style="color: #00e5ff;">⚙️ 遊戲參數設定</h4></div>
+        <div style="flex: 1; padding: 10px 0;">
+            <div class="setting-row">
+                <label>音樂音量</label>
+                <div class="setting-control"><input type="range" id="volume-music" min="0" max="100" value="80"><span class="setting-val-dis" id="volume-music-dis">80%</span></div>
+            </div>
+            <div class="setting-row">
+                <label>打擊音效音量</label>
+                <div class="setting-control"><input type="range" id="volume-sfx" min="0" max="100" value="70"><span class="setting-val-dis" id="volume-sfx-dis">70%</span></div>
+            </div>
+            <div class="setting-row">
+                <label>音符下落速度</label>
+                <div class="setting-control"><input type="range" id="speed-slider" min="1" max="12" value="6" step="0.1"><span class="setting-val-dis" id="speed-slider-dis">6.0 速</span></div>
+            </div>
+            <div class="setting-row" title="正值：歌詞延遲顯示；負值：歌詞提早顯示（範圍 -1.00 ~ +1.00 秒）">
+                <label>🎤 歌詞偏移量</label>
+                <div class="setting-control"><input type="range" id="lyric-offset-slider" min="-1" max="1" value="0" step="0.01"><span class="setting-val-dis" id="lyric-offset-slider-dis">0秒</span></div>
+            </div>
+            <div class="setting-row" title="可直接輸入精確數值（不受滑桿 ±1 秒範圍限制）">
+                <label style="font-size:12px; color:#888;">✏️ 自訂偏移</label>
+                <div class="setting-control" style="gap:6px;">
+                    <select id="lyric-offset-sign" style="flex:0 0 56px; padding:8px 4px; background:#2d2d3a; border:1px solid #444; color:#fff; border-radius:6px; font-size:14px; font-weight:bold; text-align:center;">
+                        <option value="1">＋</option>
+                        <option value="-1">－</option>
+                    </select>
+                    <input type="number" id="lyric-offset-custom-input" min="0" step="0.01" value="0.00" style="flex:1; padding:8px 10px; background:#2d2d3a; border:1px solid #444; color:#fff; border-radius:6px; font-size:13px;">
+                    <button type="button" id="lyric-offset-apply-btn" style="flex:0 0 auto; padding:8px 14px; background:#00c853; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer; font-size:12px; white-space:nowrap;">套用</button>
+                </div>
+            </div>
+            <div class="setting-row">
+                <label>顯示歌詞</label>
+                <div class="setting-control" style="justify-content: flex-end;">
+                    <button id="lyrics-toggle" style="min-width:72px; padding:6px 16px; border-radius:20px; border:none; font-size:14px; font-weight:bold; cursor:pointer; background:#00c853; color:#fff; transition:background 0.2s;">開啟</button>
+                </div>
+            </div>
+            <div class="setting-row">
+                <label>🤖 自動模式</label>
+                <div class="setting-control" style="justify-content: flex-end;">
+                    <button id="auto-mode-toggle" style="min-width:72px; padding:6px 16px; border-radius:20px; border:none; font-size:14px; font-weight:bold; cursor:pointer; background:#555; color:#fff; transition:background 0.2s;">關閉</button>
+                </div>
+            </div>
+            <div class="setting-row">
+                <label>🔇 BAD / MISS 錯誤音效</label>
+                <div class="setting-control" style="justify-content: flex-end;">
+                    <button id="break-sound-toggle" style="min-width:72px; padding:6px 16px; border-radius:20px; border:none; font-size:14px; font-weight:bold; cursor:pointer; background:#00c853; color:#fff; transition:background 0.2s;">開啟</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content: flex-end;"><button class="nav-btn" id="close-settings-btn" style="background: #4caf50;">套用並返回</button></div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="touch-overlay"></div>
+        <div id="lyric-container"><span id="lyric-text">... 準備就緒 ...</span></div>
+        <div id="ingame-panel">
+            <span id="marathon-indicator" style="color:#e040fb; font-weight:bold; margin-right:15px; font-size:14px; display:none; background:rgba(0,0,0,0.6); padding:5px 10px; border-radius:4px;"></span>
+            <button class="action-btn" id="pause-btn">⏸️ 暫停</button>
+        </div>
+        
+        <div id="pause-menu">
+            <h3 style="color: #ff3333; margin-top: 0; margin-bottom: 15px;">遊戲暫停</h3>
+            
+            <div class="pause-setting-row">
+                <label>音樂音量</label>
+                <input type="range" id="pause-volume-music" min="0" max="100" value="80">
+                <span id="pause-volume-music-dis">80%</span>
+            </div>
+            <div class="pause-setting-row">
+                <label>音效音量</label>
+                <input type="range" id="pause-volume-sfx" min="0" max="100" value="70">
+                <span id="pause-volume-sfx-dis">70%</span>
+            </div>
+            <div class="pause-setting-row">
+                <label>顯示歌詞</label>
+                <button id="pause-lyrics-toggle" style="min-width:72px; padding:6px 16px; border-radius:20px; border:none; font-size:14px; font-weight:bold; cursor:pointer; background:#00c853; color:#fff; transition:background 0.2s;">開啟</button>
+            </div>
+            <div class="pause-setting-row">
+                <label>🔇 錯誤音效</label>
+                <button id="pause-break-sound-toggle" style="min-width:72px; padding:6px 16px; border-radius:20px; border:none; font-size:14px; font-weight:bold; cursor:pointer; background:#00c853; color:#fff; transition:background 0.2s;">開啟</button>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid #333; margin: 15px 0;">
+            
+            <button class="pause-btn" id="resume-btn">▶️ 繼續</button>
+            <button class="pause-btn" id="restart-btn" style="background: #ff9800; color: #fff;">🔄 重來</button>
+            <button class="pause-btn" id="abort-btn">🚪 放棄</button>
+        </div>
+        
+        <div id="result-screen">
+            <!-- 第一頁：總覽（歌名 / 難度 / 等級 / 分數 / 百分比） -->
+            <div id="result-page-1" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+                <div class="result-title" id="result-screen-title">🎵 挑戰結算報告</div>
+                <div id="result-song-info" style="font-size:15px; color:#ccc; margin-bottom:10px; text-align:center;"></div>
+                <div id="result-rank">🔮 Rank S</div>
+                <div id="result-marathon-highlight" style="display:none; font-size:14px; color:#ffcc00; margin-bottom:14px; text-align:center; background:rgba(255,204,0,0.08); border:1px solid rgba(255,204,0,0.3); border-radius:8px; padding:8px 16px;"></div>
+                <div class="result-grid">
+                    <div class="result-label" style="color: #ffff00;">TOTAL SCORE</div><div class="result-val" id="res-score" style="color: #ffff00; font-size: 22px;">0</div>
+                    <div class="result-label" style="color: #ffcc00;">PERCENTAGE</div><div class="result-val" id="res-percentage" style="color: #ffcc00; font-size: 22px;">0.00%</div>
+                </div>
+                <button class="menu-btn" id="result-next-btn" style="background: #9c27b0; color:#fff; max-width:300px; margin-bottom:10px;">📊 詳細數據 ➡️</button>
+                <button class="menu-btn" id="result-back-btn" style="background: #00e5ff; color:#000; max-width:300px;">↩️ 返回主選單</button>
+            </div>
+
+            <!-- 第二頁：詳細數據（判定數 / 最大連擊 / 鍵位 / 速度） -->
+            <div id="result-page-2" style="display:none; flex-direction:column; align-items:center; width:100%;">
+                <div class="result-title">📊 詳細數據</div>
+                <div id="result-song-info-2" style="font-size:15px; color:#ccc; margin-bottom:10px; text-align:center;"></div>
+                <div id="result-marathon-songlist" style="display:none; max-height:130px; overflow-y:auto; width:100%; max-width:340px; font-size:12px; color:#bbb; background:rgba(255,255,255,0.04); border:1px solid #333; border-radius:8px; padding:8px 12px; margin-bottom:14px; text-align:left; line-height:1.6;"></div>
+                <div id="result-speed" style="font-size:13px; color:#00e5ff; margin-bottom:14px; text-align:center; letter-spacing:1px;"></div>
+                <div class="result-grid">
+                    <div class="result-label" style="color: #00e5ff;">MAX COMBO</div><div class="result-val" id="res-maxcombo" style="color: #00e5ff;">0</div>
+                    <div class="result-label" style="color: #66e5ff;">PERFECT</div><div class="result-val" id="res-perfect" style="color: #66e5ff;">0</div>
+                    <div class="result-label" style="color: #00ff00;">GREAT</div><div class="result-val" id="res-great" style="color: #00ff00;">0</div>
+                    <div class="result-label" style="color: #ff9800;">GOOD</div><div class="result-val" id="res-good" style="color: #ff9800;">0</div>
+                    <div class="result-label" style="color: #ff55aa;">BAD (斷連)</div><div class="result-val" id="res-bad" style="color: #ff55aa;">0</div>
+                    <div class="result-label" style="color: #ff3333;">MISS</div><div class="result-val" id="res-miss" style="color: #ff3333;">0</div>
+                </div>
+                <button class="menu-btn" id="result-prev-btn" style="background: #607d8b; color:#fff; max-width:300px; margin-bottom:10px;">⬅️ 返回成績</button>
+                <button class="menu-btn" id="result-back-btn-2" style="background: #00e5ff; color:#000; max-width:300px;">↩️ 返回主選單</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const lyricTextElement = document.getElementById('lyric-text');
+
+        // ====================================================================
+        //  ⚡ 效能優化：快取常用 DOM 節點，避免遊戲主迴圈每幀重複呼叫 getElementById
+        // ====================================================================
+        const lyricContainerEl = document.getElementById('lyric-container');
+        const marathonIndicatorEl = document.getElementById('marathon-indicator');
+        // 記錄目前實際顯示狀態，避免每幀都對沒有變化的 style.display 重複寫入觸發不必要的重排
+        let _lyricContainerVisible = null;
+        let _marathonIndicatorVisible = null;
+        function setLyricContainerVisible(visible) {
+            if (_lyricContainerVisible === visible) return;
+            _lyricContainerVisible = visible;
+            lyricContainerEl.style.display = visible ? 'flex' : 'none';
+        }
+        function setMarathonIndicatorVisible(visible) {
+            if (_marathonIndicatorVisible === visible) return;
+            _marathonIndicatorVisible = visible;
+            marathonIndicatorEl.style.display = visible ? 'inline-block' : 'none';
+        }
+        // 軌道 X 座標只在「直橫螢幕模式」或畫面寬度改變時才需要重新計算，其餘時間直接複用快取結果
+        let _cachedTrackXs = null, _cachedTrackXsKey = "";
+        function getLiveTrackXs() {
+            const key = isPortraitMode + "_" + canvasW;
+            if (_cachedTrackXsKey !== key) {
+                _cachedTrackXsKey = key;
+                _cachedTrackXs = isPortraitMode ? [canvasW/4*0.5, canvasW/4*1.5, canvasW/4*2.5, canvasW/4*3.5] : [180, 360, 664, 844];
+            }
+            return _cachedTrackXs;
+        }
+
+        let db = null;
+        let dbReady = false; 
+        let allSongsData = {}; 
+        let currentPage = 1;
+        const itemsPerPage = 4;
+        let searchQuery = "";
+        let selectedSongKey = ""; 
+        
+        let globalSingerPool = ["未知歌手"]; 
+        try {
+            const savedPool = localStorage.getItem("rhythm_singer_pool");
+            if (savedPool) { const parsed = JSON.parse(savedPool); if (Array.isArray(parsed)) globalSingerPool = parsed; }
+        } catch(e) {}
+
+        let gameConfig = { musicVolume: 0.8, sfxVolume: 0.7, fallSpeed: 6, showLyrics: true, autoMode: false, breakSoundEnabled: true, lyricOffset: 0 };
+        let isAutoModeActive = false; // 本曲開始當下是否套用自動模式（成績鎖定為 F）
+
+        // ====================================================================
+        //  💾 設定保存功能：音量 / 速度 / 顯示歌詞 全部存進同一個 localStorage 欄位
+        // ====================================================================
+        function loadGameConfigFromStorage() {
+            try {
+                const saved = localStorage.getItem("rhythm_game_config");
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && typeof parsed === 'object') {
+                        if (typeof parsed.musicVolume === 'number') gameConfig.musicVolume = parsed.musicVolume;
+                        if (typeof parsed.sfxVolume === 'number') gameConfig.sfxVolume = parsed.sfxVolume;
+                        if (typeof parsed.fallSpeed === 'number') gameConfig.fallSpeed = parsed.fallSpeed;
+                        if (typeof parsed.showLyrics === 'boolean') gameConfig.showLyrics = parsed.showLyrics;
+                        if (typeof parsed.autoMode === 'boolean') gameConfig.autoMode = parsed.autoMode;
+                        if (typeof parsed.breakSoundEnabled === 'boolean') gameConfig.breakSoundEnabled = parsed.breakSoundEnabled;
+                        if (typeof parsed.lyricOffset === 'number' && !isNaN(parsed.lyricOffset)) {
+                            gameConfig.lyricOffset = Math.max(-30, Math.min(30, parsed.lyricOffset));
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+
+        function saveGameConfigToStorage() {
+            try { localStorage.setItem("rhythm_game_config", JSON.stringify(gameConfig)); } catch (e) {}
+        }
+
+        loadGameConfigFromStorage();
+
+        let isMarathonMode = false, isEndlessMode = false, isTrueMarathonMode = false;
+        let marathonTotalStages = 0, marathonCurrentStage = 0, marathonDiffFilter = "NORMAL"; 
+        let marathonCumulativePerfect = 0, marathonCumulativeGreat = 0, marathonCumulativeGood = 0, marathonCumulativeBad = 0, marathonCumulativeMiss = 0, marathonMaxCombo = 0, marathonCumulativeScore = 0;
+        // 核心修改點：接力模式改為「整合所有音符」輸出單一成績，需累計總音符數與總連段加成
+        let marathonCumulativeNotes = 0, marathonCumulativeComboBonus = 0;
+        // 接力模式：紀錄單曲最高分及對應曲數/曲名，供結算畫面顯示
+        let marathonHighestStageScore = -1, marathonHighestStageNum = 0, marathonHighestStageName = "";
+        // 無盡模式：紀錄最高分那一關的完整判定數據（放棄時若有完成關卡，結算畫面只呈現這一關的數據）
+        let marathonHighestStagePerfect = 0, marathonHighestStageGreat = 0, marathonHighestStageGood = 0, marathonHighestStageBad = 0, marathonHighestStageMiss = 0, marathonHighestStageDiff = "";
+        // 接力模式：紀錄本次接力依序玩過的所有歌曲與難度，供結算畫面顯示完整播放清單
+        let marathonPlayedSongs = [];
+
+        // 🎲 隨機單曲模式：紀錄是否為隨機模式進入、玩家所選的難度篩選、以及是否開啟「真•隨機」
+        let isRandomSingleMode = false, randomModeTargetDiff = "", isTrueRandomExtraActive = false;
+
+        // 洗牌制專用：內部播放佇列與歷史紀錄
+        let shuffleSamplePool = []; 
+        let lastPlayedKeyId = ""; 
+
+        let currentPlayingDiffLabel = "NORMAL";
+        let currentPlayingKeyId = ""; 
+
+        let audioContext, audioBuffer, audioSource, musicGainNode;
+        let isPlaying = false, isPaused = false;
+        let chartData = null, lyrics = [];
+        let gameTimeProgress = 0, lastTimestamp = 0;
+        
+        let countdownState = "NONE";  
+        let countdownValue = 3, countdownTimeLeft = 3.0;
+        let isAudioStarted = false; 
+
+        let canvasW = 1024, canvasH = 576, isPortraitMode = false;        
+        let combo = 0, maxCombo = 0, scorePerfect = 0, scoreGreat = 0, scoreGood = 0, scoreBad = 0, scoreMiss = 0, currentLiveScore = 0;
+        let totalComboBonusScore = 0; 
+        let lastJudgmentText = "", judgmentColor = "#fff", judgmentTimer = 0;
+        let trackKeyPressed = [false, false, false, false];
+
+        // 高效能最佳化專用指標變數
+        let activeNoteIndex = 0;
+        let activeLyricIndex = 0; // 歌詞顯示指標：避免每幀都從頭掃描整份歌詞陣列
+
+        let loadedAudioBlob = null, loadedChartText = "", loadedLyricText = "";
+        let currentPlayingName = "", currentPlayingSinger = ""; 
+
+        // ====================================================================
+        //  📁 關卡資料夾系統 (Folder-First Storage)
+        //
+        //  核心策略：
+        //  · 所有關卡以「關卡整合包 歌名.levelpack」形式存放在玩家指定的資料夾（相容讀取舊版 .json 命名）
+        //  · IndexedDB 只存 highscores/highranks（輕量，永不存音訊 Blob）
+        //  · 啟動時掃描資料夾 → 載入所有 *.levelpack（相容 *.json）→ 填充 allSongsData
+        //  · 下載 = 寫入資料夾；上傳 = 從資料夾讀檔（或傳統 <input> 備援）
+        // ====================================================================
+
+        const FS_ACCESS_SUPPORTED = ('showDirectoryPicker' in window);
+        let levelFolderHandle = null;   // FileSystemDirectoryHandle
+        // 記憶體中的「檔名 → songRecord」對應，避免重複讀檔
+        // key = storeKey (levelName_singer), value = { ...songRecord, _fileName }
+        let folderLevelIndex = {};      // storeKey → { record, fileName }
+
+        // ── APK / WebView 相容模式 ────────────────────────────────────────────
+        // 當 showDirectoryPicker 不可用（Android WebView / WebIntoAPK 打包），
+        // 改以 IndexedDB 儲存完整關卡包，並用 <input file> 匯入。
+        const APK_MODE = !FS_ACCESS_SUPPORTED;
+
+        // APK 模式：IndexedDB 儲存完整關卡包（含音訊 base64）
+        const IDB_LEVELS_STORE = "levels_pkg";
+        let dbLevels = null; // 獨立的 IDB 連線，給 APK 模式關卡包用
+
+        function initLevelsDatabase() {
+            return new Promise((resolve) => {
+                try {
+                    const req = indexedDB.open("RhythmGameLevels_v1", 1);
+                    req.onupgradeneeded = (e) => {
+                        const d = e.target.result;
+                        if (!d.objectStoreNames.contains(IDB_LEVELS_STORE)) {
+                            d.createObjectStore(IDB_LEVELS_STORE, { keyPath: "fileName" });
+                        }
+                    };
+                    req.onsuccess = (e) => { dbLevels = e.target.result; resolve(); };
+                    req.onerror = () => resolve();
+                } catch(e) { resolve(); }
+            });
+        }
+
+        function idbSaveLevelPkg(fileName, pkgObj) {
+            return new Promise((resolve) => {
+                if (!dbLevels) { resolve(false); return; }
+                try {
+                    const tx = dbLevels.transaction([IDB_LEVELS_STORE], "readwrite");
+                    tx.objectStore(IDB_LEVELS_STORE).put({ fileName, pkg: pkgObj });
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => resolve(false);
+                } catch(e) { resolve(false); }
+            });
+        }
+
+        function idbDeleteLevelPkg(fileName) {
+            if (!dbLevels) return;
+            try {
+                const tx = dbLevels.transaction([IDB_LEVELS_STORE], "readwrite");
+                tx.objectStore(IDB_LEVELS_STORE).delete(fileName);
+            } catch(e) {}
+        }
+
+        function idbGetAllLevelPkgs() {
+            return new Promise((resolve) => {
+                if (!dbLevels) { resolve([]); return; }
+                try {
+                    const tx = dbLevels.transaction([IDB_LEVELS_STORE], "readonly");
+                    const req = tx.objectStore(IDB_LEVELS_STORE).getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => resolve([]);
+                } catch(e) { resolve([]); }
+            });
+        }
+
+        // ── IndexedDB：僅存分數 ──────────────────────────────────────────────
+        function initDatabase() {
+            try {
+                const request = indexedDB.open("RhythmGameDB_ScoresOnly_v1", 1);
+                request.onupgradeneeded = function(e) {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains("scores")) {
+                        database.createObjectStore("scores", { keyPath: "name_singer" });
+                    }
+                };
+                request.onsuccess = function(e) {
+                    db = e.target.result; dbReady = true;
+                };
+                request.onerror = function() { dbReady = true; };
+            } catch(err) { dbReady = true; }
+        }
+        initDatabase();
+        // APK 模式：初始化關卡包 IDB
+        if (APK_MODE) { initLevelsDatabase(); }
+
+        function saveHighScoreOnly(storeKey, diffTag, score, rank, percent) {
+            if (!db || !storeKey) return;
+            const tx = db.transaction(["scores"], "readwrite");
+            const store = tx.objectStore("scores");
+            store.get(storeKey).onsuccess = function(e) {
+                let rec = e.target.result || { name_singer: storeKey, highscores: {}, highranks: {}, highpercents: {} };
+                if (!rec.highpercents) rec.highpercents = {};
+                if (score > (rec.highscores[diffTag] || 0)) {
+                    rec.highscores[diffTag] = score;
+                    rec.highranks[diffTag] = rank;
+                    rec.highpercents[diffTag] = percent;
+                    store.put(rec);
+                }
+            };
+        }
+
+        function loadScoresFromDB(storeKey, callback) {
+            if (!db) { callback({}); return; }
+            const tx = db.transaction(["scores"], "readonly");
+            tx.objectStore("scores").get(storeKey).onsuccess = function(e) {
+                callback(e.target.result || { highscores: {}, highranks: {}, highpercents: {} });
+            };
+        }
+
+        // 🛠️ 修正：接力模式（無盡挑戰）曲數不固定，無法用單一 key 查詢，
+        // 改為掃描資料庫中所有符合難度前綴的紀錄，取分數最高的一筆
+        function findBestMarathonScoreAsync(diffPrefix, callback) {
+            if (!db) { callback(null); return; }
+            try {
+                const tx = db.transaction(["scores"], "readonly");
+                const store = tx.objectStore("scores");
+                let best = null;
+                const req = store.openCursor();
+                req.onsuccess = function(e) {
+                    const cursor = e.target.result;
+                    if (cursor) {
+                        if (typeof cursor.key === 'string' && cursor.key.indexOf(diffPrefix) === 0) {
+                            const rec = cursor.value;
+                            const sc = (rec.highscores && rec.highscores[cursor.key]) || 0;
+                            if (sc > 0 && (best === null || sc > best.score)) {
+                                best = {
+                                    score: sc,
+                                    rank: (rec.highranks && rec.highranks[cursor.key]) || '',
+                                    percent: (rec.highpercents && rec.highpercents[cursor.key]) || ''
+                                };
+                            }
+                        }
+                        cursor.continue();
+                    } else {
+                        callback(best);
+                    }
+                };
+                req.onerror = function() { callback(null); };
+            } catch (err) { callback(null); }
+        }
+
+        // 🛠️ 修正：接力模式難度按鈕滑鼠移入時無法顯示最高分的問題
+        // 依目前勾選的接力設定（固定曲數／無盡挑戰／真．接力）組出對應的最高分存檔 key 並查詢顯示
+        function setupMarathonDiffHoverHighscore(btn, diff, highscoreBox) {
+            btn.onmouseenter = () => {
+                highscoreBox.style.display = 'block';
+                const trueOn = document.getElementById('cfg-true-marathon').checked;
+                const endlessOn = document.getElementById('cfg-endless-mode').checked;
+
+                if (endlessOn) {
+                    highscoreBox.innerText = `[${diff}] ♾️ 無盡模式 讀取中...`;
+                    findBestMarathonScoreAsync(`MARATHON_${diff}_`, (best) => {
+                        highscoreBox.innerText = best
+                            ? `[${diff}] ♾️ 無盡模式最佳\n${best.score} 分 ● ${best.rank} ${best.percent}`
+                            : `[${diff}] ♾️ 無盡模式\n最佳紀錄：尚未挑戰`;
+                    });
+                    return;
+                }
+
+                let totalPlayed, modeTag;
+                if (trueOn) {
+                    totalPlayed = buildShufflePool(diff).length;
+                    modeTag = '🌟 真．接力';
+                } else {
+                    totalPlayed = parseInt(document.getElementById('cfg-stage-count').value) || 2;
+                    modeTag = `🏃 ${totalPlayed} 曲接力`;
+                }
+                const mKey = `MARATHON_${diff}_${totalPlayed}`;
+                highscoreBox.innerText = `[${diff}] ${modeTag} 讀取中...`;
+                loadScoresFromDB(mKey, (rec) => {
+                    const score = (rec.highscores && rec.highscores[mKey]) || 0;
+                    if (score > 0) {
+                        const rank = (rec.highranks && rec.highranks[mKey]) || '';
+                        const pct = (rec.highpercents && rec.highpercents[mKey]) || '';
+                        highscoreBox.innerText = `[${diff}] ${modeTag}\n${score} 分 ● ${rank} ${pct}`;
+                    } else {
+                        highscoreBox.innerText = `[${diff}] ${modeTag}\n最佳紀錄：尚未挑戰`;
+                    }
+                });
+            };
+            btn.onmouseleave = () => {
+                highscoreBox.innerText = "最佳紀錄：將滑鼠移至右側難度查看";
+            };
+        }
+
+        // ── 資料夾選擇畫面邏輯 ───────────────────────────────────────────────
+        async function pickLevelFolder() {
+            if (!FS_ACCESS_SUPPORTED) {
+                // APK 模式：不使用 showDirectoryPicker，直接回傳 true 視為「已就緒」
+                return true;
+            }
+            try {
+                levelFolderHandle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'rhythm_level_folder' });
+                localStorage.setItem('rhythm_folder_name', levelFolderHandle.name);
+                return true;
+            } catch(e) {
+                return false; // 使用者取消
+            }
+        }
+
+        async function scanFolderAndCountLevels() {
+            if (APK_MODE) {
+                // APK 模式：從 IDB 計算關卡數
+                const rows = await idbGetAllLevelPkgs();
+                return rows.filter(r => r.pkg && r.pkg.format === LEVEL_PACKAGE_FORMAT).length;
+            }
+            // 桌機模式：掃描資料夾，回傳符合格式的關卡 .json 數量
+            let count = 0;
+            try {
+                for await (const [name, handle] of levelFolderHandle.entries()) {
+                    if (!name.endsWith('.json') && !name.endsWith('.levelpack')) continue;
+                    try {
+                        const file = await handle.getFile();
+                        const text = await file.text();
+                        const pkg = JSON.parse(text);
+                        if (pkg && pkg.format === LEVEL_PACKAGE_FORMAT) count++;
+                    } catch(e) {}
+                }
+            } catch(e) {}
+            return count;
+        }
+
+        async function loadAllLevelsFromFolder() {
+            allSongsData = {};
+            folderLevelIndex = {};
+
+            if (APK_MODE) {
+                // APK 模式：從 IDB 讀取所有關卡包
+                await initLevelsDatabase(); // 確保已初始化
+                const rows = await idbGetAllLevelPkgs();
+                const promises = rows.map(row => new Promise(resolve => {
+                    const { fileName, pkg } = row;
+                    if (!pkg || pkg.format !== LEVEL_PACKAGE_FORMAT) { resolve(); return; }
+                    const storeKey = `${pkg.name}_${pkg.singer || '未知歌手'}`;
+                    loadScoresFromDB(storeKey, (scoreRec) => {
+                        const songRecord = {
+                            name_singer: storeKey,
+                            name: pkg.name,
+                            singer: pkg.singer || '未知歌手',
+                            lyric: pkg.lyric || '',
+                            charts: pkg.charts || {},
+                            highscores: scoreRec.highscores || {},
+                            highranks: scoreRec.highranks || {},
+                            highpercents: scoreRec.highpercents || {},
+                            _audio_pkg: pkg.audio,
+                            _fileName: fileName,
+                        };
+                        (pkg.singer ? pkg.singer.split(' & ') : ['未知歌手']).forEach(s => {
+                            allSongsData[`${s.trim()}///${pkg.name}`] = songRecord;
+                            registerNewSingerToPool(s.trim());
+                        });
+                        folderLevelIndex[storeKey] = { record: songRecord, fileName };
+                        resolve();
+                    });
+                }));
+                await Promise.all(promises);
+                updateAllSingerSelects('未知歌手', null);
+                renderSongList();
+                return;
+            }
+
+            // 桌機模式：掃描並載入所有符合格式的 .json，填充 allSongsData + folderLevelIndex
+            if (!levelFolderHandle) return;
+            const promises = [];
+            try {
+                for await (const [name, handle] of levelFolderHandle.entries()) {
+                    if (!name.endsWith('.json') && !name.endsWith('.levelpack')) continue;
+                    promises.push((async () => {
+                        try {
+                            const file = await handle.getFile();
+                            const text = await file.text();
+                            const pkg = JSON.parse(text);
+                            if (!pkg || pkg.format !== LEVEL_PACKAGE_FORMAT) return;
+                            const storeKey = `${pkg.name}_${pkg.singer || '未知歌手'}`;
+                            await new Promise(resolve => {
+                                loadScoresFromDB(storeKey, (scoreRec) => {
+                                    const songRecord = {
+                                        name_singer: storeKey,
+                                        name: pkg.name,
+                                        singer: pkg.singer || '未知歌手',
+                                        lyric: pkg.lyric || '',
+                                        charts: pkg.charts || {},
+                                        highscores: scoreRec.highscores || {},
+                                        highranks: scoreRec.highranks || {},
+                                        highpercents: scoreRec.highpercents || {},
+                                        _audio_pkg: pkg.audio,
+                                        _fileName: name,
+                                    };
+                                    (pkg.singer ? pkg.singer.split(' & ') : ['未知歌手']).forEach(s => {
+                                        allSongsData[`${s.trim()}///${pkg.name}`] = songRecord;
+                                        registerNewSingerToPool(s.trim());
+                                    });
+                                    folderLevelIndex[storeKey] = { record: songRecord, fileName: name };
+                                    resolve();
+                                });
+                            });
+                        } catch(err) { console.warn('載入關卡失敗:', name, err); }
+                    })());
+                }
+            } catch(e) {}
+            await Promise.all(promises);
+            updateAllSingerSelects('未知歌手', null);
+            renderSongList();
+        }
+
+        // ── 資料夾選擇畫面 UI ────────────────────────────────────────────────
+
+        // 依模式調整啟動畫面外觀
+        (function initFolderPickerUI() {
+            if (APK_MODE) {
+                document.getElementById('fp-sub-text').innerHTML = '關卡資料儲存於 App 內部，<br>可直接進入遊戲，或先匯入關卡檔案。';
+                document.getElementById('fp-card-desktop').style.display = 'none';
+                document.getElementById('fp-card-apk').style.display = 'block';
+                document.getElementById('fp-pick-btn').style.display = 'none';
+                document.getElementById('fp-import-btn').style.display = 'block';
+                // APK 模式直接顯示進入按鈕，不需先選資料夾
+                document.getElementById('fp-enter-btn').style.display = 'block';
+                document.getElementById('fp-folder-label').innerText = '儲存位置：';
+                document.getElementById('fp-folder-name').innerText = 'App 內部儲存';
+                // 更換主選單按鈕文字
+                const cfBtn = document.getElementById('change-folder-btn');
+                if (cfBtn) cfBtn.innerText = '📦 管理/匯入關卡';
+            }
+        })();
+
+        document.getElementById('fp-pick-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('fp-pick-btn');
+            const status = document.getElementById('fp-status');
+            btn.disabled = true;
+            btn.innerText = '⏳ 等待授權...';
+            status.className = '';
+            status.innerText = '';
+
+            const ok = await pickLevelFolder();
+            btn.disabled = false;
+            btn.innerText = '📁 選擇關卡資料夾';
+
+            if (!ok) {
+                status.className = 'err';
+                status.innerText = '已取消，請再試一次。';
+                return;
+            }
+
+            status.className = '';
+            status.innerText = '⏳ 掃描資料夾中...';
+            const count = await scanFolderAndCountLevels();
+
+            document.getElementById('fp-folder-name').innerText = levelFolderHandle.name;
+            document.getElementById('fp-file-count').innerText = count;
+            document.getElementById('fp-folder-info').style.display = 'block';
+            document.getElementById('fp-enter-btn').style.display = 'block';
+            document.getElementById('fp-change-folder-btn').style.display = 'inline-block';
+            status.className = 'ok';
+            status.innerText = count > 0 ? `✅ 找到 ${count} 個關卡，可以進入遊戲！` : '✅ 資料夾已授權（目前無關卡，可從線上下載）';
+        });
+
+        // APK 模式：批次匯入 JSON 關卡包
+        document.getElementById('fp-import-btn').addEventListener('click', () => {
+            document.getElementById('fp-import-input').click();
+        });
+
+        document.getElementById('fp-import-input').addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files || []);
+            e.target.value = '';
+            if (files.length === 0) return;
+            const status = document.getElementById('fp-status');
+            status.className = '';
+            status.innerText = `⏳ 匯入 ${files.length} 個檔案中...`;
+            await initLevelsDatabase();
+            let ok = 0, fail = 0;
+            for (const file of files) {
+                try {
+                    const text = await file.text();
+                    const pkg = JSON.parse(text);
+                    if (!pkg || pkg.format !== LEVEL_PACKAGE_FORMAT || !pkg.audio || !pkg.charts) { fail++; continue; }
+                    const fileName = generateLevelPackFileName(pkg.name);
+                    await idbSaveLevelPkg(fileName, pkg);
+                    ok++;
+                } catch(err) { fail++; }
+            }
+            const count = await scanFolderAndCountLevels();
+            document.getElementById('fp-file-count').innerText = count;
+            document.getElementById('fp-folder-info').style.display = 'block';
+            status.className = ok > 0 ? 'ok' : 'err';
+            status.innerText = `✅ 成功匯入 ${ok} 個關卡${fail > 0 ? `，${fail} 個失敗` : ''}。共 ${count} 個關卡可用。`;
+        });
+
+        document.getElementById('fp-change-folder-btn').addEventListener('click', async () => {
+            const ok = await pickLevelFolder();
+            if (!ok) return;
+            const count = await scanFolderAndCountLevels();
+            document.getElementById('fp-folder-name').innerText = levelFolderHandle.name;
+            document.getElementById('fp-file-count').innerText = count;
+            document.getElementById('fp-status').className = 'ok';
+            document.getElementById('fp-status').innerText = `✅ 已更換資料夾，找到 ${count} 個關卡。`;
+        });
+
+        document.getElementById('fp-enter-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('fp-enter-btn');
+            btn.disabled = true;
+            btn.innerText = '⏳ 載入關卡中...';
+            await loadAllLevelsFromFolder();
+            initSingerComponent();
+            document.getElementById('folder-picker-screen').style.display = 'none';
+            document.getElementById('setup-container').style.display = 'block';
+            btn.disabled = false;
+            btn.innerText = '▶ 進入遊戲';
+        });
+
+        // 主選單「更換資料夾」按鈕
+        document.getElementById('change-folder-btn').addEventListener('click', async () => {
+            document.getElementById('setup-container').style.display = 'none';
+            document.getElementById('fp-folder-info').style.display = 'none';
+            if (!APK_MODE) {
+                document.getElementById('fp-enter-btn').style.display = 'none';
+                document.getElementById('fp-change-folder-btn').style.display = 'none';
+            }
+            document.getElementById('fp-status').className = '';
+            document.getElementById('fp-status').innerText = '';
+            document.getElementById('fp-back-btn').style.display = 'block';
+            document.getElementById('folder-picker-screen').style.display = 'flex';
+        });
+
+        // 返回主選單按鈕
+        document.getElementById('fp-back-btn').addEventListener('click', () => {
+            document.getElementById('fp-back-btn').style.display = 'none';
+            document.getElementById('folder-picker-screen').style.display = 'none';
+            document.getElementById('setup-container').style.display = 'block';
+        });
+
+        // ── 讀取音訊（從 pkg 中的 base64 解碼）────────────────────────────────
+        async function getAudioBlobFromRecord(songRecord) {
+            if (!songRecord._audio_pkg) return null;
+            const { base64, mimeType } = songRecord._audio_pkg;
+            if (!base64) return null;
+            // base64 → ArrayBuffer → Blob
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return new Blob([bytes], { type: mimeType || 'audio/mpeg' });
+        }
+
+        // ── 寫入關卡包到資料夾（或 APK 模式下的 IDB）──────────────────────
+        // 檔名一律根據歌名自動產生為「歌名.levelpack」；oldFileName 僅用於：
+        // 若舊檔名與新檔名不同（例如歌名被更改，或舊關卡是舊版 .json 命名），寫入成功後會清除舊檔，避免留下重複檔案。
+        async function writeLevelPackageToFolder(pkgObj, oldFileName) {
+            const fileName = generateLevelPackFileName(pkgObj.name);
+            if (APK_MODE) {
+                // APK 模式：存入 IDB
+                const ok = await idbSaveLevelPkg(fileName, pkgObj);
+                if (ok && oldFileName && oldFileName !== fileName) {
+                    try { await idbDeleteLevelPkg(oldFileName); } catch(e) {}
+                }
+                return ok ? fileName : null;
+            }
+            if (!levelFolderHandle) return null;
+            try {
+                const fh = await levelFolderHandle.getFileHandle(fileName, { create: true });
+                const writable = await fh.createWritable();
+                await writable.write(JSON.stringify(pkgObj));
+                await writable.close();
+                if (oldFileName && oldFileName !== fileName) {
+                    try { await levelFolderHandle.removeEntry(oldFileName); } catch(e) {}
+                }
+                return fileName;
+            } catch(e) {
+                console.error('writeLevelPackageToFolder failed:', e);
+                return null;
+            }
+        }
+
+        // ── 保存按鈕 ─────────────────────────────────────────────────────────
+        document.getElementById('save-btn').addEventListener('click', async () => {
+            if (!APK_MODE && !levelFolderHandle) { alert('⚠️ 請先選擇關卡資料夾！'); return; }
+            const levelName = document.getElementById('level-name-input').value.trim();
+            if (!levelName) { alert('請先輸入歌曲名稱！'); return; }
+            const levelSinger = getCombinedSingers();
+            const audioFile = document.getElementById('audio-input').files[0];
+            const chartFile = document.getElementById('chart-input').files[0];
+            if (!chartFile) { alert('請選好 JSON 樂譜檔！'); return; }
+            if (!chartFile.name.toLowerCase().endsWith('.json')) { alert('❌ 樂譜檔案格式錯誤！'); return; }
+
+            let diffTag = 'NORMAL';
+            if (chartFile.name.toLowerCase().includes('易') || chartFile.name.toLowerCase().includes('easy')) diffTag = 'EASY';
+            else if (chartFile.name.toLowerCase().includes('難') || chartFile.name.toLowerCase().includes('hard')) diffTag = 'HARD';
+
+            try {
+                const chartText = await chartFile.text();
+                try { JSON.parse(chartText); } catch(e) { alert('❌ JSON 解析失敗！'); return; }
+                let lText = document.getElementById('lyric-text-input').value || '';
+                const lFile = document.getElementById('lyric-file-input').files[0];
+                if (lFile) { try { lText = await readLyricFileAsText(lFile); } catch(e) { lText = ''; } }
+
+                const storeKey = `${levelName}_${levelSinger}`;
+                const existing = folderLevelIndex[storeKey];
+
+                let audioPkg = existing ? existing.record._audio_pkg : null;
+                if (audioFile) {
+                    // 新音訊：轉 base64
+                    audioPkg = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve({
+                            base64: reader.result.split(',')[1] || '',
+                            mimeType: audioFile.type || 'audio/mpeg',
+                            fileName: audioFile.name
+                        });
+                        reader.readAsDataURL(audioFile);
+                    });
+                }
+
+                if (!audioPkg) { alert('這是新歌曲，必須上傳音樂檔案！'); return; }
+
+                const charts = existing ? { ...existing.record.charts } : {};
+                charts[diffTag] = chartText;
+
+                const pkgObj = {
+                    format: LEVEL_PACKAGE_FORMAT,
+                    name: levelName,
+                    singer: levelSinger,
+                    lyric: lText || (existing ? existing.record.lyric : ''),
+                    charts,
+                    audio: audioPkg
+                };
+
+                const existingFileName = existing ? existing.fileName : null;
+                const savedFileName = await writeLevelPackageToFolder(pkgObj, existingFileName);
+                if (!savedFileName) { alert('❌ 寫入資料夾失敗，請確認已授予寫入權限！'); return; }
+
+                // 更新記憶體
+                const newRecord = {
+                    name_singer: storeKey, name: levelName, singer: levelSinger,
+                    lyric: pkgObj.lyric, charts, highscores: existing ? existing.record.highscores : {},
+                    highranks: existing ? existing.record.highranks : {},
+                    highpercents: existing ? existing.record.highpercents || {} : {},
+                    _audio_pkg: audioPkg, _fileName: savedFileName
+                };
+                if (!newRecord.highscores[diffTag]) newRecord.highscores[diffTag] = 0;
+                if (!newRecord.highranks[diffTag]) newRecord.highranks[diffTag] = '⚪ Rank C';
+                if (!newRecord.highpercents[diffTag]) newRecord.highpercents[diffTag] = '0.00%';
+                folderLevelIndex[storeKey] = { record: newRecord, fileName: savedFileName };
+                (levelSinger.split(' & ')).forEach(s => {
+                    allSongsData[`${s.trim()}///${levelName}`] = newRecord;
+                    registerNewSingerToPool(s.trim());
+                });
+
+                alert(`✅ 關卡「${levelName}」[${diffTag}] 已儲存到資料夾！`);
+                refreshLevelList();
+            } catch(err) { alert('儲存失敗: ' + err.message); }
+        });
+
+        // ── refreshLevelList（從記憶體重新整理，不再讀 IndexedDB）────────────
+        function refreshLevelList() {
+            updateAllSingerSelects('未知歌手', null);
+            renderSongList();
+        }
+
+        window.deleteSongLevelGroup = function(event, groupKey) {
+            event.stopPropagation();
+            const [singer, name] = groupKey.split('///');
+            const storeKey = `${name}_${singer}`;
+            const confirmMsg = APK_MODE
+                ? `⚠️ 確定要刪除關卡：「${name}」嗎？（App 內部儲存的資料也會一起刪除）`
+                : `⚠️ 確定要刪除關卡：「${name}」嗎？（資料夾中的 .levelpack 檔也會一起刪除）`;
+            if (!confirm(confirmMsg)) return;
+            const entry = folderLevelIndex[storeKey];
+            if (entry) {
+                if (APK_MODE) {
+                    idbDeleteLevelPkg(entry.fileName);
+                } else if (levelFolderHandle) {
+                    levelFolderHandle.removeEntry(entry.fileName).catch(() => {});
+                }
+            }
+            // 從記憶體移除
+            Object.keys(allSongsData).forEach(k => {
+                if (allSongsData[k].name_singer === storeKey) delete allSongsData[k];
+            });
+            delete folderLevelIndex[storeKey];
+            alert('🗑️ 關卡已刪除。');
+            refreshLevelList();
+        };
+
+        function updateStageCountRowVisibility() {
+            const endlessOn = document.getElementById('cfg-endless-mode').checked;
+            const trueRelayOn = document.getElementById('cfg-true-marathon').checked;
+            document.getElementById('cfg-stage-count-row').style.display = (endlessOn || trueRelayOn) ? 'none' : 'flex';
+        }
+
+        document.getElementById('cfg-endless-mode').addEventListener('change', (e) => {
+            const trueRelayCheckbox = document.getElementById('cfg-true-marathon');
+            if (e.target.checked) { trueRelayCheckbox.checked = false; trueRelayCheckbox.disabled = true; } 
+            else { trueRelayCheckbox.disabled = false; }
+            updateStageCountRowVisibility();
+        });
+
+        document.getElementById('cfg-true-marathon').addEventListener('change', (e) => {
+            const endlessCheckbox = document.getElementById('cfg-endless-mode');
+            if (e.target.checked) { endlessCheckbox.checked = false; endlessCheckbox.disabled = true; } 
+            else { endlessCheckbox.disabled = false; }
+            updateStageCountRowVisibility();
+        });
+
+        function resetMarathonSettingsUI() {
+            const endlessCheckbox = document.getElementById('cfg-endless-mode');
+            const trueRelayCheckbox = document.getElementById('cfg-true-marathon');
+            endlessCheckbox.checked = false; endlessCheckbox.disabled = false;
+            trueRelayCheckbox.checked = false; trueRelayCheckbox.disabled = false;
+            updateStageCountRowVisibility();
+        }
+
+        function initSingerComponent() { const box = document.getElementById('singer-global-box'); box.innerHTML = ""; createSingerRow(true); }
+        function createSingerRow(isFirst = false, initialValue = "未知歌手") {
+            const box = document.getElementById('singer-global-box');
+            const row = document.createElement('div'); row.className = "singer-row-item";
+            const select = document.createElement('select'); select.className = "dynamic-singer-select";
+            globalSingerPool.forEach(singer => { const opt = document.createElement('option'); opt.value = singer; opt.innerText = singer; select.appendChild(opt); });
+            select.value = initialValue;
+
+            const addPromptBtn = document.createElement('button'); addPromptBtn.className = "add-singer-btn"; addPromptBtn.innerText = "➕ 註冊新歌手"; addPromptBtn.type = "button";
+            addPromptBtn.onclick = () => {
+                const name = prompt("請輸入全新歌手的名稱：");
+                if (name && name.trim() !== "") { const trimmed = name.trim(); registerNewSingerToPool(trimmed); updateAllSingerSelects(trimmed, select); }
+            };
+
+            const deletePromptBtn = document.createElement('button'); deletePromptBtn.className = "delete-singer-db-btn"; deletePromptBtn.innerText = "🗑️ 刪除此歌手"; deletePromptBtn.type = "button";
+            deletePromptBtn.onclick = () => {
+                const targetSinger = select.value; if (targetSinger === "未知歌手") { alert("⚠️ 「未知歌手」無法刪除！"); return; }
+                if (confirm(`確定要刪除「${targetSinger}」嗎？`)) {
+                    globalSingerPool = globalSingerPool.filter(s => s !== targetSinger); localStorage.setItem("rhythm_singer_pool", JSON.stringify(globalSingerPool));
+                    document.querySelectorAll('.dynamic-singer-select').forEach(sel => {
+                        if (sel.value === targetSinger) sel.value = "未知歌手";
+                        for (let i = 0; i < sel.options.length; i++) { if (sel.options[i].value === targetSinger) { sel.remove(i); break; } }
+                    });
+                }
+            };
+
+            row.appendChild(select); row.appendChild(addPromptBtn); row.appendChild(deletePromptBtn); 
+            if (!isFirst) {
+                const removeBtn = document.createElement('button'); removeBtn.className = "remove-singer-btn"; removeBtn.innerText = "❌ 移除"; removeBtn.type = "button";
+                removeBtn.onclick = () => { row.remove(); }; row.appendChild(removeBtn);
+            }
+            box.appendChild(row);
+        }
+
+        function registerNewSingerToPool(name) { if (!globalSingerPool.includes(name)) { globalSingerPool.push(name); localStorage.setItem("rhythm_singer_pool", JSON.stringify(globalSingerPool)); } }
+        function updateAllSingerSelects(newValue, targetSelectElement) {
+            document.querySelectorAll('.dynamic-singer-select').forEach(sel => {
+                let exist = false; for(let i=0; i<sel.options.length; i++) { if(sel.options[i].value === newValue) { exist = true; break; } }
+                if(!exist) { const opt = document.createElement('option'); opt.value = newValue; opt.innerText = newValue; sel.appendChild(opt); }
+            });
+            if(targetSelectElement) targetSelectElement.value = newValue;
+        }
+        document.getElementById('add-new-singer-row-btn').addEventListener('click', () => { createSingerRow(false, "未知歌手"); });
+        function getCombinedSingers() {
+            let array = []; document.querySelectorAll('.dynamic-singer-select').forEach(sel => { if (sel.value && sel.value.trim() !== "") array.push(sel.value.trim()); });
+            if (array.length === 0) return "未知歌手"; return [...new Set(array)].join(" & ");
+        }
+        function syncSingerDropdownsByString(singerStr) {
+            const box = document.getElementById('singer-global-box'); box.innerHTML = ""; if (!singerStr) { createSingerRow(true, "未知歌手"); return; }
+            singerStr.split(" & ").forEach((singerName, index) => { registerNewSingerToPool(singerName); updateAllSingerSelects(singerName, null); createSingerRow(index === 0, singerName); });
+        }
+
+        function syncVolumeControls(musicVol, sfxVol) {
+            document.getElementById('volume-music').value = musicVol;
+            document.getElementById('volume-music-dis').innerText = `${musicVol}%`;
+            document.getElementById('volume-sfx').value = sfxVol;
+            document.getElementById('volume-sfx-dis').innerText = `${sfxVol}%`;
+            document.getElementById('pause-volume-music').value = musicVol;
+            document.getElementById('pause-volume-music-dis').innerText = `${musicVol}%`;
+            document.getElementById('pause-volume-sfx').value = sfxVol;
+            document.getElementById('pause-volume-sfx-dis').innerText = `${sfxVol}%`;
+        }
+
+        document.getElementById('settings-btn').addEventListener('click', () => { document.getElementById('settings-modal').style.display = 'flex'; const b = document.getElementById('lyrics-toggle'); b.textContent = gameConfig.showLyrics ? '開啟' : '關閉'; b.style.background = gameConfig.showLyrics ? '#00c853' : '#555'; const ab = document.getElementById('auto-mode-toggle'); ab.textContent = gameConfig.autoMode ? '開啟' : '關閉'; ab.style.background = gameConfig.autoMode ? '#ff9800' : '#555'; const bs = document.getElementById('break-sound-toggle'); bs.textContent = gameConfig.breakSoundEnabled ? '開啟' : '關閉'; bs.style.background = gameConfig.breakSoundEnabled ? '#00c853' : '#555'; });
+        document.getElementById('close-settings-btn').addEventListener('click', () => { document.getElementById('settings-modal').style.display = 'none'; });
+        // 歌詞偏移量顯示文字：0 秒時顯示「0秒」，其餘顯示帶正負號的兩位小數
+        function formatLyricOffsetDisplay(val) {
+            if (val === 0) return '0秒';
+            return `${val > 0 ? '+' : ''}${val.toFixed(2)}秒`;
+        }
+        // 統一同步滑桿、顯示文字、自訂偏移輸入框（正負選單 + 數值），確保三者一致
+        function syncLyricOffsetUI(val) {
+            document.getElementById('lyric-offset-slider').value = Math.max(-1, Math.min(1, val));
+            document.getElementById('lyric-offset-slider-dis').innerText = formatLyricOffsetDisplay(val);
+            document.getElementById('lyric-offset-sign').value = val < 0 ? '-1' : '1';
+            document.getElementById('lyric-offset-custom-input').value = Math.abs(val).toFixed(2);
+        }
+        document.getElementById('speed-slider').addEventListener('input', (e) => { const val = parseFloat(parseFloat(e.target.value).toFixed(1)); document.getElementById('speed-slider-dis').innerText = `${val.toFixed(1)} 速`; gameConfig.fallSpeed = val; });
+        document.getElementById('lyric-offset-slider').addEventListener('input', (e) => {
+            const val = parseFloat(parseFloat(e.target.value).toFixed(2));
+            gameConfig.lyricOffset = val;
+            syncLyricOffsetUI(val);
+        });
+        document.getElementById('lyric-offset-slider').addEventListener('change', () => { saveGameConfigToStorage(); });
+
+        // ✏️ 自訂偏移：可直接輸入精確數值並選擇正負，不受滑桿 ±1 秒範圍限制
+        function applyCustomLyricOffset() {
+            const sign = parseInt(document.getElementById('lyric-offset-sign').value) || 1;
+            let mag = parseFloat(document.getElementById('lyric-offset-custom-input').value);
+            if (isNaN(mag) || mag < 0) mag = 0;
+            let val = parseFloat((sign * mag).toFixed(2));
+            val = Math.max(-30, Math.min(30, val)); // 合理上限，避免誤觸極端數值
+            gameConfig.lyricOffset = val;
+            syncLyricOffsetUI(val);
+            saveGameConfigToStorage();
+        }
+        document.getElementById('lyric-offset-apply-btn').addEventListener('click', applyCustomLyricOffset);
+        document.getElementById('lyric-offset-custom-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); applyCustomLyricOffset(); }
+        });
+
+        document.getElementById('volume-music').addEventListener('input', (e) => { 
+            const val = parseInt(e.target.value); 
+            gameConfig.musicVolume = val / 100; 
+            if (musicGainNode && audioContext) { musicGainNode.gain.setValueAtTime(gameConfig.musicVolume, audioContext.currentTime); }
+            syncVolumeControls(val, parseInt(document.getElementById('volume-sfx').value));
+            saveGameConfigToStorage();
+        });
+        document.getElementById('volume-sfx').addEventListener('input', (e) => { 
+            const val = parseInt(e.target.value); 
+            gameConfig.sfxVolume = val / 100; 
+            syncVolumeControls(parseInt(document.getElementById('volume-music').value), val);
+            saveGameConfigToStorage();
+        });
+        document.getElementById('speed-slider').addEventListener('change', () => { saveGameConfigToStorage(); });
+
+        // 自動模式開關：純粹主設定面板控制（遊戲開始當下才會擷取套用）
+        function applyAutoModeVisual(on) {
+            gameConfig.autoMode = on;
+            const btn = document.getElementById('auto-mode-toggle');
+            if (btn) { btn.textContent = on ? '開啟' : '關閉'; btn.style.background = on ? '#ff9800' : '#555'; }
+            saveGameConfigToStorage();
+        }
+        document.getElementById('auto-mode-toggle').addEventListener('click', () => applyAutoModeVisual(!gameConfig.autoMode));
+
+
+        // 顯示歌詞開關：主設定面板與暫停選單的按鈕互相同步，且立即套用、立即保存
+        function applyLyricsVisibility(visible) {
+            gameConfig.showLyrics = visible;
+            const btn1 = document.getElementById('lyrics-toggle');
+            const btn2 = document.getElementById('pause-lyrics-toggle');
+            [btn1, btn2].forEach(btn => {
+                if (!btn) return;
+                btn.textContent = visible ? '開啟' : '關閉';
+                btn.style.background = visible ? '#00c853' : '#555';
+            });
+            if (isPlaying) setLyricContainerVisible(visible && lyrics.length > 0);
+            saveGameConfigToStorage();
+        }
+        document.getElementById('lyrics-toggle').addEventListener('click', () => applyLyricsVisibility(!gameConfig.showLyrics));
+        document.getElementById('pause-lyrics-toggle').addEventListener('click', () => applyLyricsVisibility(!gameConfig.showLyrics));
+
+        // BAD / MISS 錯誤音效開關：主設定面板與暫停選單的按鈕互相同步，且立即套用、立即保存
+        function applyBreakSoundVisibility(enabled) {
+            gameConfig.breakSoundEnabled = enabled;
+            const btn1 = document.getElementById('break-sound-toggle');
+            const btn2 = document.getElementById('pause-break-sound-toggle');
+            [btn1, btn2].forEach(btn => {
+                if (!btn) return;
+                btn.textContent = enabled ? '開啟' : '關閉';
+                btn.style.background = enabled ? '#00c853' : '#555';
+            });
+            saveGameConfigToStorage();
+        }
+        document.getElementById('break-sound-toggle').addEventListener('click', () => applyBreakSoundVisibility(!gameConfig.breakSoundEnabled));
+        document.getElementById('pause-break-sound-toggle').addEventListener('click', () => applyBreakSoundVisibility(!gameConfig.breakSoundEnabled));
+
+        document.getElementById('pause-volume-music').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            gameConfig.musicVolume = val / 100;
+            if (musicGainNode && audioContext) { musicGainNode.gain.setValueAtTime(gameConfig.musicVolume, audioContext.currentTime); }
+            syncVolumeControls(val, parseInt(document.getElementById('pause-volume-sfx').value));
+            saveGameConfigToStorage();
+        });
+        document.getElementById('pause-volume-sfx').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            gameConfig.sfxVolume = val / 100;
+            syncVolumeControls(parseInt(document.getElementById('pause-volume-music').value), val);
+            saveGameConfigToStorage();
+        });
+
+        document.getElementById('resume-btn').addEventListener('click', async () => { 
+            if (audioContext) await audioContext.resume(); 
+            document.getElementById('pause-menu').style.display = 'none'; 
+            countdownState = "RESUME_COUNTDOWN";
+            countdownValue = 3;
+            countdownTimeLeft = 3.0;
+            isPaused = false;
+            lastTimestamp = performance.now();
+            requestAnimationFrame(gameLoop);
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            document.getElementById('pause-menu').style.display = 'none';
+            // 永遠重置當曲分數（接力模式重新也需要清除，否則舊分數會殘留）
+            combo = 0; maxCombo = 0; scorePerfect = 0; scoreGreat = 0; scoreGood = 0; scoreBad = 0; scoreMiss = 0; currentLiveScore = 0; totalComboBonusScore = 0;
+            processInputsAndPrepare(!!loadedAudioBlob);
+        });
+
+        function playHitSound() {
+            if (!audioContext || gameConfig.sfxVolume <= 0) return;
+            try {
+                const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(600, audioContext.currentTime); osc.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.06);
+                gain.gain.setValueAtTime(gameConfig.sfxVolume, audioContext.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.06);
+                osc.connect(gain); gain.connect(audioContext.destination); osc.start(); osc.stop(audioContext.currentTime + 0.06);
+            } catch(e){}
+        }
+
+        // 🔇 斷連音效（BAD / MISS 觸發時播放，與一般打擊音效區分，使用低沉下墜的方波音色）
+        function playBreakSound() {
+            if (!gameConfig.breakSoundEnabled) return;
+            if (!audioContext || gameConfig.sfxVolume <= 0) return;
+            try {
+                const osc = audioContext.createOscillator(); const gain = audioContext.createGain();
+                osc.type = 'square'; osc.frequency.setValueAtTime(220, audioContext.currentTime); osc.frequency.exponentialRampToValueAtTime(60, audioContext.currentTime + 0.18);
+                gain.gain.setValueAtTime(gameConfig.sfxVolume * 0.8, audioContext.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.18);
+                osc.connect(gain); gain.connect(audioContext.destination); osc.start(); osc.stop(audioContext.currentTime + 0.18);
+            } catch(e){}
+        }
+
+        async function readLyricFileAsText(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'docx') { return (await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value || ""; }
+            if (ext === 'pdf') {
+                const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise; let text = "";
+                for (let i = 1; i <= pdf.numPages; i++) { text += (await (await pdf.getPage(i)).getTextContent()).items.map(item => item.str).join(" ") + "\n"; }
+                return text;
+            }
+            return await file.text();
+        }
+
+        // (save-btn 已在上方 📁 關卡資料夾系統 區塊中實作)
+
+        function filteredSongs() {
+            let res = {}; res["MARATHON///🏃 挑戰接力馬拉松 (多曲連續挑戰)"] = "MARATHON_ENTRY"; res["SPECIAL///🎲 隨機進入一關 (全隨機模式)"] = "RANDOM_ENTRY";
+            Object.keys(allSongsData).forEach(groupKey => {
+                const [singer, name] = groupKey.split("///"); 
+                const songRecord = allSongsData[groupKey];
+                const fullSingerStr = songRecord.singer || "";
+                if (name.toLowerCase().includes(searchQuery) || singer.toLowerCase().includes(searchQuery) || fullSingerStr.toLowerCase().includes(searchQuery)) { res[groupKey] = songRecord; }
+            });
+            return res;
+        }
+
+        function renderSongList() {
+            const listContent = document.getElementById('level-list-content'); listContent.innerHTML = "";
+            const songs = filteredSongs(); let songKeys = Object.keys(songs);
+            songKeys.sort((a, b) => { 
+                if (a.startsWith("MARATHON")) return -1; if (b.startsWith("MARATHON")) return 1;
+                if (a.startsWith("SPECIAL")) return -1; if (b.startsWith("SPECIAL")) return 1; 
+                return a.localeCompare(b); 
+            });
+            const totalPages = Math.max(1, Math.ceil(songKeys.length / itemsPerPage));
+            document.getElementById('page-indicator').innerText = `${currentPage} / ${totalPages}`;
+            document.getElementById('prev-page-btn').disabled = (currentPage === 1);
+            document.getElementById('next-page-btn').disabled = (totalPages === 0 || currentPage === totalPages);
+
+            const startIdx = (currentPage - 1) * itemsPerPage; const endIdx = Math.min(startIdx + itemsPerPage, songKeys.length);
+            let currentSingerHeader = "";
+            for (let i = startIdx; i < endIdx; i++) {
+                const groupKey = songKeys[i]; const [singer, name] = groupKey.split("///");
+                if (singer !== "SPECIAL" && singer !== "MARATHON" && singer !== currentSingerHeader) {
+                    currentSingerHeader = singer; const singerDiv = document.createElement('div'); singerDiv.className = 'singer-group-header'; singerDiv.innerText = `🎤 歌手: ${singer}`; listContent.appendChild(singerDiv);
+                }
+                const card = document.createElement('div'); card.className = 'song-item-row';
+                if (name.startsWith("🏃")) {
+                    card.innerHTML = `<div class="song-info-clickable" onclick="enterDifficultySubview('${groupKey}')"><div class="song-title-wrap"><span class="song-title-main" style="color:#e040fb;">${name}</span></div><span class="song-diff-tags-dis" style="color:#e040fb;">接力模式 ➔</span></div>`;
+                } else if (name.startsWith("🎲")) {
+                    card.innerHTML = `<div class="song-info-clickable" onclick="enterDifficultySubview('${groupKey}')"><div class="song-title-wrap"><span class="song-title-main" style="color:#ffcc00;">${name}</span></div><span class="song-diff-tags-dis" style="color:#ffcc00;">特殊隨機 ➔</span></div>`;
+                } else {
+                    const songRecord = allSongsData[groupKey];
+                    const diffs = Object.keys(songRecord.charts).join(', ');
+                    card.innerHTML = `<div class="song-info-clickable" onclick="enterDifficultySubview('${groupKey}')"><div class="song-title-wrap"><span class="song-title-main">${name}</span><span style="color:#aaa; font-size:11px; display:block; margin-top:2px;">演唱: ${songRecord.singer || "未知歌手"}</span></div><span class="song-diff-tags-dis">難度: ${diffs} ➔</span></div><button class="delete-level-btn" onclick="deleteSongLevelGroup(event, '${groupKey}')">🗑️ 刪除</button>`;
+                }
+                listContent.appendChild(card);
+            }
+        }
+
+        document.getElementById('level-btn').addEventListener('click', () => { document.getElementById('level-modal').style.display = 'flex'; switchViewToLobby(); });
+        document.getElementById('close-modal-btn').addEventListener('click', () => { document.getElementById('level-modal').style.display = 'none'; currentPage = 1; });
+        document.getElementById('sub-back-to-list').addEventListener('click', switchViewToLobby);
+        document.getElementById('search-input').addEventListener('input', (e) => { searchQuery = e.target.value.toLowerCase(); currentPage = 1; renderSongList(); });
+        document.getElementById('prev-page-btn').addEventListener('click', () => { if (currentPage > 1) { currentPage--; renderSongList(); } });
+        document.getElementById('next-page-btn').addEventListener('click', () => { const totalPages = Math.ceil(Object.keys(filteredSongs()).length / itemsPerPage); if (currentPage < totalPages) { currentPage++; renderSongList(); } });
+        
+        document.getElementById('start-btn').addEventListener('click', () => {
+            const levelName = document.getElementById('level-name-input').value.trim(); if (!levelName) { alert("請先填寫或載入一首關卡歌曲！"); return; }
+            currentPlayingName = levelName; currentPlayingSinger = getCombinedSingers(); currentPlayingDiffLabel = "CUSTOM"; currentPlayingKeyId = ""; isRandomSingleMode = false; processInputsAndPrepare(false);
+        });
+
+        function switchViewToLobby() {
+            document.getElementById('search-input').style.display = 'block';
+            document.getElementById('upload-level-btn').style.display = 'inline-block';
+            document.getElementById('online-levels-btn').style.display = 'inline-block';
+            document.getElementById('modal-header-title').innerText = "📂 選擇關卡"; document.getElementById('level-list-content').style.display = 'block';
+            document.getElementById('modal-main-footer').style.display = 'flex'; document.getElementById('difficulty-select-subview').style.display = 'none'; renderSongList();
+        }
+
+        window.enterDifficultySubview = function(groupKey) {
+            selectedSongKey = groupKey; const [singer, name] = groupKey.split("///");
+            document.getElementById('search-input').style.display = 'none';
+            document.getElementById('upload-level-btn').style.display = 'none';
+            document.getElementById('online-levels-btn').style.display = 'none';
+            document.getElementById('level-list-content').style.display = 'none'; document.getElementById('modal-main-footer').style.display = 'none';
+            document.getElementById('modal-header-title').innerText = "📊 選擇難度";
+            document.getElementById('subview-song-title').innerText = name;
+            document.getElementById('difficulty-select-subview').style.display = 'grid'; 
+            const highscoreBox = document.getElementById('subview-song-highscore'); highscoreBox.innerText = "最佳紀錄：點選右側難度查看";
+
+            const btnEasy = document.getElementById('sub-btn-easy'), btnNormal = document.getElementById('sub-btn-normal'), btnHard = document.getElementById('sub-btn-hard'), btnSpecial = document.getElementById('sub-btn-special');
+            const marathonBox = document.getElementById('subview-marathon-box');
+            const trueRandomBox = document.getElementById('subview-true-random-box');
+            const downloadBtn = document.getElementById('sub-download-btn');
+
+            trueRandomBox.style.display = 'none';
+            const editModBtn = document.getElementById('edit-mod-open-btn');
+            editModBtn.style.display = 'none';
+            editModBtn.onclick = null;
+
+            if (singer === "MARATHON") {
+                document.getElementById('subview-song-singer').innerText = "模式：多曲連續接力挑戰"; 
+                highscoreBox.style.display = 'block'; 
+                highscoreBox.innerText = "最佳紀錄：將滑鼠移至右側難度查看";
+                marathonBox.style.display = 'flex'; 
+                downloadBtn.style.display = 'none';
+                resetMarathonSettingsUI();
+                btnSpecial.className = "diff-circle-btn diff-c-special"; btnEasy.className = "diff-circle-btn diff-c-easy"; btnNormal.className = "diff-circle-btn diff-c-normal"; btnHard.className = "diff-circle-btn diff-c-hard";
+                btnEasy.onclick = () => startMarathonFlow('EASY'); btnNormal.onclick = () => startMarathonFlow('NORMAL'); btnHard.onclick = () => startMarathonFlow('HARD'); btnSpecial.onclick = () => startMarathonFlow('SPECIAL');
+                setupMarathonDiffHoverHighscore(btnEasy, 'EASY', highscoreBox);
+                setupMarathonDiffHoverHighscore(btnNormal, 'NORMAL', highscoreBox);
+                setupMarathonDiffHoverHighscore(btnHard, 'HARD', highscoreBox);
+                setupMarathonDiffHoverHighscore(btnSpecial, 'SPECIAL', highscoreBox);
+            } else if (name === "🎲 隨機進入一關 (全隨機模式)") {
+                document.getElementById('subview-song-singer').innerText = "模式：由資料庫隨機抽取單曲"; highscoreBox.style.display = 'none'; marathonBox.style.display = 'none';
+                downloadBtn.style.display = 'none';
+                trueRandomBox.style.display = 'flex';
+                document.getElementById('cfg-true-random-extra').checked = false;
+                btnSpecial.className = "diff-circle-btn diff-c-special"; btnEasy.className = "diff-circle-btn diff-c-easy"; btnNormal.className = "diff-circle-btn diff-c-normal"; btnHard.className = "diff-circle-btn diff-c-hard";
+                btnEasy.onclick = () => triggerRandomMatchWithExtra('EASY'); btnNormal.onclick = () => triggerRandomMatchWithExtra('NORMAL'); btnHard.onclick = () => triggerRandomMatchWithExtra('HARD'); btnSpecial.onclick = () => triggerRandomMatchWithExtra('SPECIAL');
+                [btnEasy, btnNormal, btnHard, btnSpecial].forEach(b => { b.onmouseenter = null; b.onmouseleave = null; });
+            } else {
+                highscoreBox.style.display = 'block'; 
+                const songRecord = allSongsData[groupKey];
+                document.getElementById('subview-song-singer').innerText = `演唱歌手：${songRecord.singer}`; marathonBox.style.display = 'none';
+                downloadBtn.style.display = 'block';
+                downloadBtn.disabled = false;
+                downloadBtn.classList.remove('subview-download-btn-ready');
+                downloadBtn.innerText = "⬇️ 下載關卡整合檔";
+                pendingDownloadPackage = null;
+                downloadBtn.onclick = () => downloadLevelPackage(songRecord);
+                btnSpecial.className = "diff-circle-btn diff-c-disabled"; btnSpecial.onclick = null;
+                setupDiffCircleBtn(btnEasy, songRecord, 'EASY', "diff-circle-btn diff-c-easy", highscoreBox);
+                setupDiffCircleBtn(btnNormal, songRecord, 'NORMAL', "diff-circle-btn diff-c-normal", highscoreBox);
+                setupDiffCircleBtn(btnHard, songRecord, 'HARD', "diff-circle-btn diff-c-hard", highscoreBox);
+                editModBtn.style.display = 'inline-block';
+                editModBtn.onclick = () => openEditModModal(groupKey);
+            }
+        };
+
+        // ====== 編輯 Mod：可單獨上傳並保存歌詞 / 樂譜 / 音樂 ======
+        let editModCurrentGroupKey = null;
+        let editModCurrentTarget = null; // 'lyric' | 'chart' | 'audio'
+
+        function openEditModModal(groupKey) {
+            editModCurrentGroupKey = groupKey;
+            editModCurrentTarget = null;
+            const songRecord = allSongsData[groupKey];
+            if (!songRecord) return;
+
+            const diffRow = document.getElementById('editmod-diff-row');
+            const diffSelect = document.getElementById('editmod-diff-select');
+            diffSelect.innerHTML = '';
+            Object.keys(songRecord.charts || {}).forEach(d => {
+                const opt = document.createElement('option'); opt.value = d; opt.innerText = d; diffSelect.appendChild(opt);
+            });
+
+            document.getElementById('editmod-lyric-text').value = songRecord.lyric || '';
+            document.getElementById('editmod-lyric-file').value = '';
+            document.getElementById('editmod-chart-file').value = '';
+            document.getElementById('editmod-audio-file').value = '';
+
+            document.getElementById('editmod-lyric-area').style.display = 'none';
+            document.getElementById('editmod-chart-area').style.display = 'none';
+            document.getElementById('editmod-audio-area').style.display = 'none';
+            diffRow.style.display = 'none';
+            document.getElementById('editmod-save-btn').style.display = 'none';
+            ['editmod-pick-lyric','editmod-pick-chart','editmod-pick-audio'].forEach(id => document.getElementById(id).classList.remove('active'));
+
+            document.getElementById('editmod-modal').style.display = 'flex';
+        }
+
+        function closeEditModModal() {
+            document.getElementById('editmod-modal').style.display = 'none';
+            editModCurrentGroupKey = null; editModCurrentTarget = null;
+        }
+
+        document.getElementById('editmod-close-btn').addEventListener('click', closeEditModModal);
+
+        document.getElementById('editmod-pick-lyric').addEventListener('click', () => {
+            editModCurrentTarget = 'lyric';
+            document.getElementById('editmod-lyric-area').style.display = 'block';
+            document.getElementById('editmod-chart-area').style.display = 'none';
+            document.getElementById('editmod-audio-area').style.display = 'none';
+            document.getElementById('editmod-diff-row').style.display = 'none';
+            document.getElementById('editmod-save-btn').style.display = 'block';
+            ['editmod-pick-lyric','editmod-pick-chart','editmod-pick-audio'].forEach(id => document.getElementById(id).classList.remove('active'));
+            document.getElementById('editmod-pick-lyric').classList.add('active');
+        });
+        document.getElementById('editmod-pick-chart').addEventListener('click', () => {
+            editModCurrentTarget = 'chart';
+            document.getElementById('editmod-lyric-area').style.display = 'none';
+            document.getElementById('editmod-chart-area').style.display = 'block';
+            document.getElementById('editmod-audio-area').style.display = 'none';
+            document.getElementById('editmod-diff-row').style.display = 'block';
+            document.getElementById('editmod-save-btn').style.display = 'block';
+            ['editmod-pick-lyric','editmod-pick-chart','editmod-pick-audio'].forEach(id => document.getElementById(id).classList.remove('active'));
+            document.getElementById('editmod-pick-chart').classList.add('active');
+        });
+        document.getElementById('editmod-pick-audio').addEventListener('click', () => {
+            editModCurrentTarget = 'audio';
+            document.getElementById('editmod-lyric-area').style.display = 'none';
+            document.getElementById('editmod-chart-area').style.display = 'none';
+            document.getElementById('editmod-audio-area').style.display = 'block';
+            document.getElementById('editmod-diff-row').style.display = 'none';
+            document.getElementById('editmod-save-btn').style.display = 'block';
+            ['editmod-pick-lyric','editmod-pick-chart','editmod-pick-audio'].forEach(id => document.getElementById(id).classList.remove('active'));
+            document.getElementById('editmod-pick-audio').classList.add('active');
+        });
+
+        document.getElementById('editmod-save-btn').addEventListener('click', async () => {
+            if (!editModCurrentGroupKey || !editModCurrentTarget) { alert('請先選擇要編輯的項目！'); return; }
+            const groupKey = editModCurrentGroupKey;
+            const songRecord = allSongsData[groupKey];
+            if (!songRecord) { alert('找不到此歌曲資料！'); return; }
+            const storeKey = songRecord.name_singer;
+            const entry = folderLevelIndex[storeKey];
+            if (!entry) { alert('找不到此關卡的儲存資料！'); return; }
+
+            const saveBtn = document.getElementById('editmod-save-btn');
+            saveBtn.disabled = true; saveBtn.innerText = '⏳ 儲存中...';
+
+            try {
+                const record = entry.record;
+                if (editModCurrentTarget === 'lyric') {
+                    let lText = document.getElementById('editmod-lyric-text').value || '';
+                    const lFile = document.getElementById('editmod-lyric-file').files[0];
+                    if (lFile) { try { lText = await readLyricFileAsText(lFile); } catch(e) {} }
+                    record.lyric = lText;
+                } else if (editModCurrentTarget === 'chart') {
+                    const cFile = document.getElementById('editmod-chart-file').files[0];
+                    if (!cFile) { alert('請選擇樂譜 JSON 檔案！'); saveBtn.disabled = false; saveBtn.innerText = '💾 儲存此項目'; return; }
+                    const chartText = await cFile.text();
+                    try { JSON.parse(chartText); } catch(e) { alert('❌ JSON 解析失敗！'); saveBtn.disabled = false; saveBtn.innerText = '💾 儲存此項目'; return; }
+                    const diffTag = document.getElementById('editmod-diff-select').value;
+                    record.charts[diffTag] = chartText;
+                } else if (editModCurrentTarget === 'audio') {
+                    const aFile = document.getElementById('editmod-audio-file').files[0];
+                    if (!aFile) { alert('請選擇音樂檔案！'); saveBtn.disabled = false; saveBtn.innerText = '💾 儲存此項目'; return; }
+                    const audioPkg = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve({
+                            base64: reader.result.split(',')[1] || '',
+                            mimeType: aFile.type || 'audio/mpeg',
+                            fileName: aFile.name
+                        });
+                        reader.readAsDataURL(aFile);
+                    });
+                    record._audio_pkg = audioPkg;
+                }
+
+                const pkgObj = {
+                    format: LEVEL_PACKAGE_FORMAT,
+                    name: record.name,
+                    singer: record.singer,
+                    lyric: record.lyric || '',
+                    charts: record.charts,
+                    audio: record._audio_pkg
+                };
+                const savedFileName = await writeLevelPackageToFolder(pkgObj, entry.fileName);
+                if (!savedFileName) { alert('❌ 寫入資料夾失敗，請確認已授予寫入權限！'); saveBtn.disabled = false; saveBtn.innerText = '💾 儲存此項目'; return; }
+
+                entry.fileName = savedFileName;
+                record._fileName = savedFileName;
+                (record.singer.split(' & ')).forEach(s => { allSongsData[`${s.trim()}///${record.name}`] = record; });
+
+                alert('✅ 已儲存修改！');
+                closeEditModModal();
+                refreshLevelList();
+            } catch(err) {
+                alert('儲存失敗: ' + err.message);
+            } finally {
+                saveBtn.disabled = false; saveBtn.innerText = '💾 儲存此項目';
+            }
+        });
+
+        function setupDiffCircleBtn(btn, songRecord, diff, activeClass, highscoreBox) {
+            if (songRecord && songRecord.charts[diff]) { 
+                btn.className = activeClass; 
+                btn.onmouseenter = () => { 
+                    const score = songRecord.highscores[diff] || 0; 
+                    const rank = songRecord.highranks[diff] || "⚪ Rank C"; 
+                    const pct = (songRecord.highpercents && songRecord.highpercents[diff]) ? songRecord.highpercents[diff] : '0.00%';
+                    highscoreBox.innerText = `[${diff}] ${rank}\n${score} 分 ● ${pct}`; 
+                };
+                btn.onclick = () => { 
+                    isMarathonMode = false; 
+                    currentPlayingDiffLabel = diff; 
+                    currentPlayingKeyId = songRecord.name_singer; 
+                    loadTargetLevel(songRecord.name_singer, diff); 
+                }; 
+            } else { btn.className = "diff-circle-btn diff-c-disabled"; btn.onclick = null; btn.onmouseenter = null; }
+        }
+
+        // ====== 關卡整合檔：下載（存入資料夾）/ 上傳（從資料夾或 <input>） ======
+        const LEVEL_PACKAGE_FORMAT = "RhythmGameLevelPackage_v1";
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(",")[1] || "");
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function base64ToBlob(base64, mimeType) {
+            const byteChars = atob(base64);
+            const byteNumbers = new Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+            return new Blob([new Uint8Array(byteNumbers)], { type: mimeType || "application/octet-stream" });
+        }
+
+        function generateRandomPackageFileName(prefixLetters = 8) {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            let result = "";
+            for (let i = 0; i < prefixLetters; i++) { result += chars.charAt(Math.floor(Math.random() * chars.length)); }
+            return result;
+        }
+
+        // 🏷️ 關卡整合檔統一命名規則：下載或保存關卡時，檔名一律使用「歌名.levelpack」
+        function sanitizeSongNameForFile(name) {
+            const base = (name || '未命名歌曲').toString().trim() || '未命名歌曲';
+            // 移除檔案系統不允許的字元，保留中日文、英數字、空白、底線、連字號
+            return base.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim() || '未命名歌曲';
+        }
+        function generateLevelPackFileName(songName) {
+            return `${sanitizeSongNameForFile(songName)}.levelpack`;
+        }
+
+        let pendingDownloadPackage = null;
+
+        async function downloadLevelPackage(songRecord) {
+            const downloadBtn = document.getElementById('sub-download-btn');
+            try {
+                downloadBtn.disabled = true; downloadBtn.innerText = "⏳ 打包中...";
+
+                // 音訊：直接從記憶體的 _audio_pkg 取得 base64（已存在包內，不需重新轉）
+                const audioPkg = songRecord._audio_pkg;
+                if (!audioPkg) throw new Error('找不到音訊資料，此關卡可能來自舊版本。');
+
+                const packageData = {
+                    format: LEVEL_PACKAGE_FORMAT,
+                    name: songRecord.name,
+                    singer: songRecord.singer || "未知歌手",
+                    lyric: songRecord.lyric || "",
+                    charts: songRecord.charts || {},
+                    audio: audioPkg
+                };
+
+                // 檔名一律為「歌名.levelpack」
+                const fileName = generateLevelPackFileName(songRecord.name);
+                const oldFileName = songRecord._fileName;
+
+                // 優先：直接寫入資料夾
+                if (levelFolderHandle) {
+                    downloadBtn.innerText = "⏳ 寫入資料夾...";
+                    const saved = await writeLevelPackageToFolder(packageData, oldFileName);
+                    if (saved) {
+                        songRecord._fileName = saved;
+                        const storeKey = songRecord.name_singer;
+                        if (folderLevelIndex[storeKey]) folderLevelIndex[storeKey].fileName = saved;
+                        downloadBtn.disabled = false; downloadBtn.innerText = "✅ 已存入資料夾";
+                        setTimeout(() => { downloadBtn.innerText = "⬇️ 下載關卡整合檔"; }, 2000);
+                        return;
+                    }
+                }
+
+                // 備援：傳統下載
+                const jsonStr = JSON.stringify(packageData);
+                const fileBlob = new Blob([jsonStr], { type: "application/octet-stream" });
+                pendingDownloadPackage = { blob: fileBlob, fileName };
+                downloadBtn.disabled = false;
+                downloadBtn.innerText = "📥 點此儲存檔案";
+                downloadBtn.classList.add('subview-download-btn-ready');
+                downloadBtn.onclick = () => confirmDownloadPendingPackage(songRecord);
+            } catch (err) {
+                alert("❌ 打包下載失敗: " + err.message);
+                downloadBtn.disabled = false; downloadBtn.innerText = "⬇️ 下載關卡整合檔";
+                downloadBtn.classList.remove('subview-download-btn-ready');
+                downloadBtn.onclick = () => downloadLevelPackage(songRecord);
+            }
+        }
+
+        function confirmDownloadPendingPackage(songRecord) {
+            const downloadBtn = document.getElementById('sub-download-btn');
+            if (!pendingDownloadPackage) { downloadLevelPackage(songRecord); return; }
+            const { blob, fileName } = pendingDownloadPackage;
+
+            triggerFileSave(blob, fileName);
+
+            pendingDownloadPackage = null;
+            downloadBtn.classList.remove('subview-download-btn-ready');
+            downloadBtn.innerText = "⬇️ 下載關卡整合檔";
+            downloadBtn.onclick = () => downloadLevelPackage(songRecord);
+        }
+
+        // 在「同步的使用者點擊」當下立即觸發存檔，依相容性由高到低依序嘗試
+        function triggerFileSave(blob, fileName) {
+            // 方法一：Web Share API（將檔案交給系統分享面板，多數 App 包裝後的 WebView
+            // 對「分享」的支援度遠比直接攔截 blob: 下載更穩定一致，使用者可在分享面板中選擇「儲存到檔案」）
+            try {
+                if (navigator.share && navigator.canShare) {
+                    const shareFile = new File([blob], fileName, { type: blob.type || "application/octet-stream" });
+                    if (navigator.canShare({ files: [shareFile] })) {
+                        navigator.share({ files: [shareFile], title: fileName }).catch(() => {});
+                        return;
+                    }
+                }
+            } catch (shareErr) { /* 不支援或失敗，繼續往下嘗試備援方案 */ }
+
+            // 方法二：傳統 blob + <a download>（一般瀏覽器與部分相容性較好的 WebView 適用）
+            try {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 3000);
+            } catch (err) {
+                alert("❌ 下載失敗: " + err.message + "\n若使用 App 包裝版本仍無法下載，建議改用手機內建瀏覽器（Chrome/Safari）開啟此頁面再下載。");
+            }
+        }
+
+        document.getElementById('online-levels-btn').addEventListener('click', () => {
+            window.open('https://wang209963-creator.github.io/music-game-database/', '_blank');
+        });
+
+        // 上傳按鈕：從 <input file> 選取 歌名.levelpack（或舊版 .json），存入資料夾並載入
+        document.getElementById('upload-level-btn').addEventListener('click', () => {
+            document.getElementById('upload-level-input').click();
+        });
+
+        document.getElementById('upload-level-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            e.target.value = "";
+            if (!file) return;
+
+            const uploadBtn = document.getElementById('upload-level-btn');
+            try {
+                uploadBtn.disabled = true; uploadBtn.innerText = "⏳ 匯入中...";
+
+                const text = await file.text();
+                let packageData;
+                try { packageData = JSON.parse(text); } catch (e) { throw new Error("檔案不是有效的 JSON 整合檔"); }
+
+                if (!packageData || packageData.format !== LEVEL_PACKAGE_FORMAT || !packageData.audio || !packageData.charts) {
+                    throw new Error("這不是合法的關卡整合檔（格式不符）");
+                }
+                if (Object.keys(packageData.charts).length === 0) { throw new Error("整合檔內沒有任何難度的譜面資料"); }
+
+                const levelName = (packageData.name || "未命名歌曲").trim() || "未命名歌曲";
+                const levelSinger = (packageData.singer || "未知歌手").trim() || "未知歌手";
+                const storeKey = `${levelName}_${levelSinger}`;
+
+                const isNew = !folderLevelIndex[storeKey];
+                // 保留既有分數
+                const existingRecord = folderLevelIndex[storeKey]?.record;
+                const existingFileName = folderLevelIndex[storeKey]?.fileName;
+
+                if (existingRecord) {
+                    // 合併 charts
+                    Object.keys(existingRecord.charts).forEach(d => {
+                        if (!packageData.charts[d]) packageData.charts[d] = existingRecord.charts[d];
+                    });
+                }
+
+                // 檔名一律為「歌名.levelpack」；若既有關卡的舊檔名不同，寫入成功後會自動清除舊檔
+                let savedFileName = null;
+                if (levelFolderHandle) {
+                    savedFileName = await writeLevelPackageToFolder(packageData, existingFileName);
+                }
+
+                // 若無資料夾且非 APK 模式，退回傳統分享/下載模式
+                if (!savedFileName && !APK_MODE) {
+                    const fallbackFileName = generateLevelPackFileName(levelName);
+                    const blob = new Blob([JSON.stringify(packageData)], { type: 'application/octet-stream' });
+                    triggerFileSave(blob, fallbackFileName);
+                    alert(`✅ 關卡「${levelName}」解析成功！（資料夾未授權，已改用傳統下載方式輸出）`);
+                    return;
+                } else if (!savedFileName) {
+                    alert('❌ 關卡匯入失敗（App 內部儲存寫入失敗）');
+                    return;
+                }
+
+                // 更新記憶體
+                const newRecord = {
+                    name_singer: storeKey, name: levelName, singer: levelSinger,
+                    lyric: packageData.lyric || '',
+                    charts: packageData.charts,
+                    highscores: existingRecord ? existingRecord.highscores : {},
+                    highranks: existingRecord ? existingRecord.highranks : {},
+                    highpercents: existingRecord ? existingRecord.highpercents || {} : {},
+                    _audio_pkg: packageData.audio,
+                    _fileName: savedFileName
+                };
+                Object.keys(packageData.charts).forEach(d => {
+                    if (!newRecord.highscores[d]) newRecord.highscores[d] = 0;
+                    if (!newRecord.highranks[d]) newRecord.highranks[d] = '⚪ Rank C';
+                    if (!newRecord.highpercents[d]) newRecord.highpercents[d] = '0.00%';
+                });
+                folderLevelIndex[storeKey] = { record: newRecord, fileName: savedFileName };
+                (levelSinger.split(' & ')).forEach(s => {
+                    allSongsData[`${s.trim()}///${levelName}`] = newRecord;
+                    registerNewSingerToPool(s.trim());
+                });
+
+                alert(`✅ 關卡「${levelName}」${isNew ? '已匯入' : '已合併更新'}，並存入關卡資料夾！`);
+                refreshLevelList();
+            } catch (err) {
+                alert("❌ 上傳關卡失敗: " + err.message);
+            } finally {
+                uploadBtn.disabled = false; uploadBtn.innerText = "⬆️ 上傳關卡整合檔";
+            }
+        });
+
+        // Fisher-Yates 洗牌演算法
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 建立洗牌後的專屬音樂佇列
+        function buildShufflePool(targetDiff) {
+            let pool = [];
+            let distinctSongs = {};
+            
+            // 避免因為多合唱重複抓歌，先過濾出唯一的 name_singer 紀錄
+            Object.keys(allSongsData).forEach(groupKey => {
+                const songRecord = allSongsData[groupKey];
+                distinctSongs[songRecord.name_singer] = songRecord;
+            });
+
+            Object.keys(distinctSongs).forEach(key => {
+                const songRecord = distinctSongs[key];
+                if (targetDiff === 'SPECIAL') {
+                    // 全隨機模式下，把該歌所有難度獨立打包塞入
+                    Object.keys(songRecord.charts).forEach(d => {
+                        pool.push({ song: songRecord, diff: d });
+                    });
+                } else {
+                    if (songRecord.charts[targetDiff]) {
+                        pool.push({ song: songRecord, diff: targetDiff });
+                    }
+                }
+            });
+
+            if (pool.length === 0) return [];
+            
+            // 一口氣打亂整張歌單 (洗牌制)
+            shuffleArray(pool);
+
+            // 優化防撞頭：若池子重新洗牌後的第一首歌和上一局剛結束的歌一樣，將其丟到最末尾
+            if (pool.length > 1 && lastPlayedKeyId && pool[0].song.name_singer === lastPlayedKeyId) {
+                const duplicatedItem = pool.shift();
+                pool.push(duplicatedItem);
+            }
+            
+            return pool;
+        }
+
+        // 核心修改點：音樂軟體式洗牌取樣 (隨機單曲抽取)
+        async function triggerRandomMatch(targetDiff, forcedResetPool = false) {
+            // 如果被強制重設，或池子空了，就重新建立完整的洗牌歌單
+            if (forcedResetPool || !shuffleSamplePool || shuffleSamplePool.length === 0) {
+                shuffleSamplePool = buildShufflePool(targetDiff);
+            }
+            
+            if (shuffleSamplePool.length === 0) {
+                alert("資料庫內沒有任何符合該難度的歌曲！");
+                return null;
+            }
+
+            // 從佇列最前面抽出一首歌（保證不重複，直到整輪耗盡）
+            let matchItem = shuffleSamplePool.shift();
+
+            // 防撞歌機制：如果抽出的第一首歌恰好跟上一次播完的一樣，且陣列中還有別的歌，就把這首塞回最尾端，改拿下一首
+            if (lastPlayedKeyId && matchItem.song.name_singer === lastPlayedKeyId && shuffleSamplePool.length > 0) {
+                shuffleSamplePool.push(matchItem);
+                matchItem = shuffleSamplePool.shift();
+            }
+
+            const luckySong = matchItem.song;
+            const luckyDiff = matchItem.diff;
+
+            // 記錄本次播放歷史
+            lastPlayedKeyId = luckySong.name_singer;
+
+            currentPlayingName = luckySong.name; 
+            currentPlayingSinger = luckySong.singer; 
+            currentPlayingDiffLabel = luckyDiff; 
+            currentPlayingKeyId = luckySong.name_singer;
+
+            if (!isMarathonMode) { 
+                isRandomSingleMode = true;
+                document.getElementById('level-modal').style.display = 'none'; 
+                await executeLoad(luckySong, luckyDiff); 
+            }
+            return { song: luckySong, diff: luckyDiff };
+        }
+
+        // 🎰 真•隨機：勾選後，點選任一難度（含 R 全隨機難度）會連同速度一起重新隨機
+        // ♻️ 這個變數用來記住「隨機前」的速度，離開遊戲回主選單時會自動還原
+        let preRandomFallSpeed = null;
+        let pendingRestoreAfterRandom = false;
+
+        function randomizeFallSpeedOnly() {
+            const slider = document.getElementById('speed-slider');
+            const min = parseFloat(slider.min), max = parseFloat(slider.max);
+            const randVal = parseFloat((Math.random() * (max - min) + min).toFixed(1));
+            gameConfig.fallSpeed = randVal;
+            slider.value = randVal;
+            document.getElementById('speed-slider-dis').innerText = `${randVal.toFixed(1)} 速`;
+            saveGameConfigToStorage();
+        }
+
+        async function triggerRandomMatchWithExtra(targetDiff) {
+            const extraOn = document.getElementById('cfg-true-random-extra').checked;
+            randomModeTargetDiff = targetDiff;
+            isTrueRandomExtraActive = extraOn;
+            if (extraOn) {
+                // 記住目前的速度，等這局結束回到主選單後再還原回來
+                preRandomFallSpeed = gameConfig.fallSpeed;
+                pendingRestoreAfterRandom = true;
+                randomizeFallSpeedOnly();
+            }
+            await triggerRandomMatch(targetDiff, true);
+        }
+
+        // 🔄 還原隨機模式開始前的速度（在返回主選單時呼叫）
+        function restoreKeysAndSpeedAfterRandom() {
+            if (!pendingRestoreAfterRandom) return;
+            if (typeof preRandomFallSpeed === 'number') {
+                gameConfig.fallSpeed = preRandomFallSpeed;
+                const slider = document.getElementById('speed-slider');
+                if (slider) slider.value = preRandomFallSpeed;
+                const dis = document.getElementById('speed-slider-dis');
+                if (dis) dis.innerText = `${parseFloat(preRandomFallSpeed).toFixed(1)} 速`;
+                saveGameConfigToStorage();
+            }
+            preRandomFallSpeed = null;
+            pendingRestoreAfterRandom = false;
+        }
+
+        // 核心修改點：接力模式同樣走完美洗牌制；新增「真．接力」可遍歷所有符合條件的譜面
+        async function startMarathonFlow(chosenDiff) {
+            isTrueMarathonMode = document.getElementById('cfg-true-marathon').checked;
+            isEndlessMode = isTrueMarathonMode ? false : document.getElementById('cfg-endless-mode').checked;
+            let chosenStageNum = parseInt(document.getElementById('cfg-stage-count').value); 
+            if (isNaN(chosenStageNum) || chosenStageNum < 2) chosenStageNum = 3;
+            
+            marathonDiffFilter = chosenDiff; 
+            isMarathonMode = true; 
+            marathonCurrentStage = 1; 
+            
+            // 開啟接力時重新初始化洗牌池與清空歷史
+            lastPlayedKeyId = ""; 
+            shuffleSamplePool = buildShufflePool(marathonDiffFilter);
+
+            if (isTrueMarathonMode) {
+                // 真．接力：總曲數即為池內所有符合條件的譜面數量，逐一遍歷後即結束，不重新充能洗牌
+                if (shuffleSamplePool.length === 0) { alert("資料庫內找不到任何符合該難度的譜面，無法啟動真．接力！"); isMarathonMode = false; return; }
+                marathonTotalStages = shuffleSamplePool.length;
+            } else {
+                marathonTotalStages = chosenStageNum;
+            }
+
+            marathonCumulativePerfect = 0; marathonCumulativeGreat = 0; marathonCumulativeGood = 0; marathonCumulativeBad = 0; marathonCumulativeMiss = 0; marathonMaxCombo = 0; marathonCumulativeScore = 0;
+            marathonCumulativeNotes = 0; marathonCumulativeComboBonus = 0;
+            marathonHighestStageScore = -1; marathonHighestStageNum = 0; marathonHighestStageName = "";
+            marathonHighestStagePerfect = 0; marathonHighestStageGreat = 0; marathonHighestStageGood = 0; marathonHighestStageBad = 0; marathonHighestStageMiss = 0; marathonHighestStageDiff = "";
+            marathonPlayedSongs = [];
+            isRandomSingleMode = false; // 接力模式不使用單曲隨機結算畫面
+            combo = 0; maxCombo = 0; scorePerfect = 0; scoreGreat = 0; scoreGood = 0; scoreBad = 0; scoreMiss = 0; currentLiveScore = 0; totalComboBonusScore = 0;
+            
+            const firstTrack = await triggerRandomMatch(marathonDiffFilter); 
+            if (!firstTrack) { alert("資料庫內找不到對應難度的關卡歌曲！"); isMarathonMode = false; return; }
+            marathonPlayedSongs.push({ stage: marathonCurrentStage, name: firstTrack.song.name, singer: firstTrack.song.singer || "未知歌手", diff: firstTrack.diff });
+            document.getElementById('level-modal').style.display = 'none'; 
+            await executeLoad(firstTrack.song, firstTrack.diff);
+        }
+
+        async function proceedMarathonNextStage() {
+            // 紀錄目前為止單曲最高分（含完整判定數據，供無盡模式放棄時取用）
+            if (currentLiveScore > marathonHighestStageScore) {
+                marathonHighestStageScore = currentLiveScore;
+                marathonHighestStageNum = marathonCurrentStage;
+                marathonHighestStageName = currentPlayingName;
+                marathonHighestStagePerfect = scorePerfect;
+                marathonHighestStageGreat = scoreGreat;
+                marathonHighestStageGood = scoreGood;
+                marathonHighestStageBad = scoreBad;
+                marathonHighestStageMiss = scoreMiss;
+                marathonHighestStageDiff = currentPlayingDiffLabel;
+            }
+            // 若是最後一曲，直接呼叫 showMarathonFinalResult（它會累計最後一曲）
+            if (!isEndlessMode && marathonCurrentStage >= marathonTotalStages) { showMarathonFinalResult(); return; }
+            // 非最後一曲：在此累計後繼續
+            marathonCumulativePerfect += scorePerfect; marathonCumulativeGreat += scoreGreat; marathonCumulativeGood += scoreGood; marathonCumulativeBad += scoreBad; marathonCumulativeMiss += scoreMiss; 
+            marathonCumulativeScore += currentLiveScore; if (maxCombo > marathonMaxCombo) marathonMaxCombo = maxCombo;
+            marathonCumulativeNotes += (chartData && chartData.notes) ? chartData.notes.length : 0;
+            marathonCurrentStage++; 
+            
+            // 直接由已洗牌的 Queue 中取出下一首歌，如果沒歌了 triggerRandomMatch 內部會自動重新充能洗牌
+            const nextTrack = await triggerRandomMatch(marathonDiffFilter); 
+            if (!nextTrack) { showMarathonFinalResult(); return; }
+            marathonPlayedSongs.push({ stage: marathonCurrentStage, name: nextTrack.song.name, singer: nextTrack.song.singer || "未知歌手", diff: nextTrack.diff });
+            
+            // 接力：保留 combo，只重置當曲分數與判定數
+            scorePerfect = 0; scoreGreat = 0; scoreGood = 0; scoreBad = 0; scoreMiss = 0; currentLiveScore = 0; totalComboBonusScore = 0;
+            lastJudgmentText = "NEXT STAGE"; judgmentColor = "#e040fb"; judgmentTimer = 30; 
+            await executeLoad(nextTrack.song, nextTrack.diff);
+        }
+
+        function getRankLabel(finalScore) {
+            if (finalScore >= 1000000) return "👑 All Perfect"; if (finalScore >= 900000) return "✨ Rank S"; if (finalScore >= 800000) return "🔴 Rank A"; if (finalScore >= 700000) return "🟢 Rank B"; if (finalScore >= 600000) return "⚪ Rank C"; return "🟤 Rank F";
+        }
+
+        // 將難度篩選代碼轉換為結算畫面顯示用的文字（SPECIAL＝R 全隨機難度）
+        function diffFilterLabel(diff) {
+            const map = { EASY: 'EASY 易', NORMAL: 'NORMAL 普', HARD: 'HARD 難', SPECIAL: 'R 全隨機難度' };
+            return map[diff] || diff || '未知';
+        }
+
+        function applyRankStyle(finalScore, isFC, isAP, elementId) {
+            const el = document.getElementById(elementId);
+            const label = isAutoModeActive ? "🤖 Rank F (自動模式)" : getRankLabel(finalScore);
+            el.innerText = label;
+
+            if (isAutoModeActive) { el.style.color = "#888899"; el.style.textShadow = "none"; return; }
+            
+            let totalHits = scorePerfect + scoreGreat + scoreGood + scoreBad;
+            if (isMarathonMode) {
+                totalHits = marathonCumulativePerfect + marathonCumulativeGreat + marathonCumulativeGood + marathonCumulativeBad;
+            }
+            
+            if (finalScore === 0 || totalHits === 0) {
+                el.style.color = "#717185"; el.style.textShadow = "none";
+                return;
+            }
+
+            if (isAP) { el.style.color = "#00e5ff"; el.style.textShadow = "0 0 20px rgba(0,229,255,0.6)"; } 
+            else if (isFC) { el.style.color = "#00a2ff"; el.style.textShadow = "0 0 20px rgba(0,162,255,0.6)"; } 
+            else { el.style.color = "#ffffff"; el.style.textShadow = "none"; }
+        }
+
+        function saveHighScoreRecord(keyId, diffTag, finalScore, percentStr) {
+            if (!keyId || isMarathonMode || isAutoModeActive) return;
+            const rankLabel = getRankLabel(finalScore);
+            const pct = percentStr || '0.00%';
+            // 更新記憶體
+            const entry = folderLevelIndex[keyId];
+            if (entry) {
+                if (!entry.record.highpercents) entry.record.highpercents = {};
+                if (finalScore > (entry.record.highscores[diffTag] || 0)) {
+                    entry.record.highscores[diffTag] = finalScore;
+                    entry.record.highranks[diffTag] = rankLabel;
+                    entry.record.highpercents[diffTag] = pct;
+                    // 同步更新 allSongsData 中所有指向同一 record 的引用
+                    Object.values(allSongsData).forEach(r => {
+                        if (r.name_singer === keyId) {
+                            r.highscores[diffTag] = finalScore;
+                            r.highranks[diffTag] = rankLabel;
+                            if (!r.highpercents) r.highpercents = {};
+                            r.highpercents[diffTag] = pct;
+                        }
+                    });
+                    // 持久化到 IndexedDB（只存分數）
+                    saveHighScoreOnly(keyId, diffTag, finalScore, rankLabel, pct);
+                }
+            }
+            refreshLevelList();
+        }
+
+        function showMarathonFinalResult() {
+            isPlaying = false; if (audioSource) { try { audioSource.stop(); } catch(e){} }
+
+            const songListEl = document.getElementById('result-marathon-songlist');
+            const highlightEl = document.getElementById('result-marathon-highlight');
+
+            if (isEndlessMode) {
+                // 無盡模式：一律只呈現「已完成關卡中分數最高的那一首」的完整數據，
+                // 目前尚未完成就被放棄的這一首不計入（進入這裡前，abortMarathonNow 已確保至少完成過一關）
+                const totalPlayed = Math.max(marathonCurrentStage - 1, 0);
+                const finalScore = Math.max(marathonHighestStageScore, 0);
+                const isHighestAP = (marathonHighestStagePerfect > 0 && marathonHighestStageGreat === 0 && marathonHighestStageGood === 0 && marathonHighestStageBad === 0 && marathonHighestStageMiss === 0);
+                const isHighestFC = (marathonHighestStageBad === 0 && marathonHighestStageMiss === 0);
+
+                document.getElementById('result-screen-title').innerText = `♾️ 無盡模式結束 (共完成 ${totalPlayed} 首，取單曲最高分)`;
+                const infoLine = `無盡挑戰共完成 ${totalPlayed} 首歌曲 ｜ 已選難度：${diffFilterLabel(marathonDiffFilter)}`;
+                document.getElementById('result-song-info').innerText = infoLine;
+                document.getElementById('result-song-info-2').innerText = infoLine;
+                applyRankStyle(finalScore, isHighestFC, isHighestAP, 'result-rank');
+
+                highlightEl.style.display = 'block';
+                highlightEl.innerText = `🏆 最高分歌曲：第 ${marathonHighestStageNum} 首：${marathonHighestStageName || "未知歌曲"}（難度：${marathonHighestStageDiff || marathonDiffFilter}）`;
+
+                if (marathonPlayedSongs.length > 0) {
+                    songListEl.innerHTML = marathonPlayedSongs.map(s =>
+                        `<div>第 ${s.stage} 首：${s.name}（${s.singer}）－ 難度：${s.diff}</div>`
+                    ).join('');
+                    songListEl.style.display = 'block';
+                } else {
+                    songListEl.style.display = 'none';
+                }
+
+                document.getElementById('res-score').innerText = finalScore; document.getElementById('res-maxcombo').innerText = marathonMaxCombo;
+                const highestTotalHits = marathonHighestStagePerfect + marathonHighestStageGreat + marathonHighestStageGood + marathonHighestStageBad + marathonHighestStageMiss;
+                const highestAccuracyPct = highestTotalHits > 0 ? ((marathonHighestStagePerfect * 1.0 + marathonHighestStageGreat * 0.75 + marathonHighestStageGood * 0.40) / highestTotalHits * 100) : 0;
+                document.getElementById('res-percentage').innerText = `${highestAccuracyPct.toFixed(2)}%`;
+                document.getElementById('res-perfect').innerText = marathonHighestStagePerfect; document.getElementById('res-great').innerText = marathonHighestStageGreat;
+                document.getElementById('res-good').innerText = marathonHighestStageGood; document.getElementById('res-bad').innerText = marathonHighestStageBad; document.getElementById('res-miss').innerText = marathonHighestStageMiss;
+
+                if (!isAutoModeActive) {
+                    const mKey = `MARATHON_${marathonDiffFilter}_${totalPlayed}`;
+                    saveHighScoreOnly(mKey, mKey, finalScore, getRankLabel(finalScore), `${highestAccuracyPct.toFixed(2)}%`);
+                }
+                showResultPage(1);
+                document.getElementById('ingame-panel').style.display = 'none'; document.getElementById('touch-overlay').style.display = 'none'; document.getElementById('result-screen').style.display = 'flex';
+                return;
+            }
+
+            // 一般接力／真．接力：累計最後一曲的數據（前幾曲已在 proceedMarathonNextStage 中累計）
+            marathonCumulativePerfect += scorePerfect; marathonCumulativeGreat += scoreGreat;
+            marathonCumulativeGood += scoreGood; marathonCumulativeBad += scoreBad; marathonCumulativeMiss += scoreMiss;
+            if (maxCombo > marathonMaxCombo) marathonMaxCombo = maxCombo;
+            marathonCumulativeScore += currentLiveScore;
+            const totalPlayed = marathonCurrentStage;
+            // 最終總分 = 所有曲目 currentLiveScore 之和
+            const finalScore = marathonCumulativeScore;
+
+            const isMarathonAP = (marathonCumulativePerfect > 0 && marathonCumulativeGreat === 0 && marathonCumulativeGood === 0 && marathonCumulativeBad === 0 && marathonCumulativeMiss === 0);
+            const isMarathonFC = (marathonCumulativeBad === 0 && marathonCumulativeMiss === 0);
+
+            let finalTitle = `🏃 接力馬拉松完賽`;
+            if (isTrueMarathonMode) { finalTitle = `🌟 真．接力完賽 (已遍歷全部 ${totalPlayed} 首譜面)`; }
+            document.getElementById('result-screen-title').innerText = finalTitle;
+            const marathonInfoLine = `接力共 ${totalPlayed} 首歌曲 ｜ 已選難度：${diffFilterLabel(marathonDiffFilter)} ｜ 真．接力：${isTrueMarathonMode ? '是' : '否'}`;
+            document.getElementById('result-song-info').innerText = marathonInfoLine;
+            document.getElementById('result-song-info-2').innerText = marathonInfoLine;
+            applyRankStyle(finalScore, isMarathonFC, isMarathonAP, 'result-rank');
+
+            // 真．接力／一般接力不顯示「單曲最高分」提示框
+            highlightEl.style.display = 'none';
+
+            // 列出本次接力依序玩過的所有歌曲與難度
+            if (marathonPlayedSongs.length > 0) {
+                songListEl.innerHTML = marathonPlayedSongs.map(s =>
+                    `<div>第 ${s.stage} 首：${s.name}（${s.singer}）－ 難度：${s.diff}</div>`
+                ).join('');
+                songListEl.style.display = 'block';
+            } else {
+                songListEl.style.display = 'none';
+            }
+
+            document.getElementById('res-score').innerText = finalScore; document.getElementById('res-maxcombo').innerText = marathonMaxCombo; 
+            const marathonTotalHits = marathonCumulativePerfect + marathonCumulativeGreat + marathonCumulativeGood + marathonCumulativeBad + marathonCumulativeMiss;
+            const marathonAccuracyPct = marathonTotalHits > 0 ? ((marathonCumulativePerfect * 1.0 + marathonCumulativeGreat * 0.75 + marathonCumulativeGood * 0.40) / marathonTotalHits * 100) : 0;
+            document.getElementById('res-percentage').innerText = `${marathonAccuracyPct.toFixed(2)}%`;
+            document.getElementById('res-perfect').innerText = marathonCumulativePerfect; document.getElementById('res-great').innerText = marathonCumulativeGreat; 
+            document.getElementById('res-good').innerText = marathonCumulativeGood; document.getElementById('res-bad').innerText = marathonCumulativeBad; document.getElementById('res-miss').innerText = marathonCumulativeMiss;
+            // 持久化接力最高分（key = MARATHON_<diff>_<songs>曲）
+            if (!isAutoModeActive) {
+                const mKey = `MARATHON_${marathonDiffFilter}_${totalPlayed}`;
+                saveHighScoreOnly(mKey, mKey, finalScore, getRankLabel(finalScore), `${marathonAccuracyPct.toFixed(2)}%`);
+            }
+            showResultPage(1);
+            document.getElementById('ingame-panel').style.display = 'none'; document.getElementById('touch-overlay').style.display = 'none'; document.getElementById('result-screen').style.display = 'flex';
+        }
+
+        function loadTargetLevel(keyId, diffTag) { 
+            const entry = folderLevelIndex[keyId];
+            if (!entry) { alert('找不到此關卡，請重新載入關卡資料夾。'); return; }
+            isRandomSingleMode = false;
+            document.getElementById('level-modal').style.display = 'none'; 
+            executeLoad(entry.record, diffTag); 
+        }
+        
+        async function executeLoad(songRecord, diffTag) { 
+            document.getElementById('level-name-input').value = songRecord.name; 
+            syncSingerDropdownsByString(songRecord.singer); 
+
+            // 從關卡包內的 base64 音訊解碼為 Blob
+            const audioBlob = await getAudioBlobFromRecord(songRecord);
+            if (!audioBlob) {
+                alert(`⚠️ 無法取得「${songRecord.name}」的音訊資料，請重新匯入關卡。`);
+                return;
+            }
+            loadedAudioBlob = audioBlob;
+            loadedChartText = songRecord.charts[diffTag]; 
+            loadedLyricText = songRecord.lyric || ""; 
+            currentPlayingName = songRecord.name; 
+            currentPlayingSinger = songRecord.singer || "未知歌手"; 
+            processInputsAndPrepare(true); 
+        }
+
+        async function processInputsAndPrepare(isFromSaved = false) {
+            isPaused = false; 
+            isAutoModeActive = !!gameConfig.autoMode;
+            document.getElementById('setup-container').style.display = 'none';
+            document.getElementById('level-modal').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block'; 
+            document.getElementById('ingame-panel').style.display = 'block';
+            const pauseBtnEl = document.getElementById('pause-btn');
+            pauseBtnEl.textContent = isMarathonMode ? '🚪 放棄' : '⏸️ 暫停';
+            
+            setMarathonIndicatorVisible(false);
+            
+            resizeGameCanvas();
+
+            countdownState = "LOADING";
+            isPlaying = true;
+            lastTimestamp = performance.now();
+            // 先啟動 gameLoop 顯示「解碼中」畫面（LOADING 狀態只繪製，不推進遊戲）
+            requestAnimationFrame(gameLoop);
+
+            try {
+                if (!audioContext) { audioContext = new (window.AudioContext || window.webkitAudioContext)(); }
+                if (audioContext.state === 'suspended') { await audioContext.resume(); }
+                
+                if (audioSource) {
+                    try { audioSource.stop(); } catch(e){}
+                    try { audioSource.disconnect(); } catch(e){}
+                    audioSource = null;
+                }
+
+                if (isFromSaved) { 
+                    // 先 decode audio（耗時），完成前 LOADING 畫面持續繪製
+                    audioBuffer = await audioContext.decodeAudioData(await loadedAudioBlob.arrayBuffer());
+                    chartData = JSON.parse(loadedChartText); 
+                    parseLRC(loadedLyricText); 
+                } else {
+                    const audioFile = document.getElementById('audio-input').files[0], chartFile = document.getElementById('chart-input').files[0];
+                    if (!audioFile || !chartFile) { alert("❌ 請確認選取檔案！"); throw new Error("檔案未選取"); }
+                    chartData = JSON.parse(await chartFile.text()); 
+                    audioBuffer = await audioContext.decodeAudioData(await audioFile.arrayBuffer());
+                    let lText = document.getElementById('lyric-text-input').value || ""; 
+                    const lFile = document.getElementById('lyric-file-input').files[0]; 
+                    if (lFile) { try { lText = await readLyricFileAsText(lFile); } catch(e){} } 
+                    parseLRC(lText);
+                }
+            } catch(e) { 
+                alert("初始化失敗: " + e.message); 
+                isPlaying = false; countdownState = "NONE";
+                document.getElementById('game-container').style.display = 'none';
+                document.getElementById('setup-container').style.display = 'block';
+                return; 
+            }
+
+            // 確保樂譜按照時間升序排序（指針法的前提關鍵）
+            if (chartData && chartData.notes) {
+                chartData.notes.sort((a, b) => a.time - b.time);
+            }
+            activeNoteIndex = 0; // 重置高效能音符起點指針
+            activeLyricIndex = 0; // 重置歌詞顯示指針
+
+            if (!isMarathonMode) {
+                combo = 0; maxCombo = 0; scorePerfect = 0; scoreGreat = 0; scoreGood = 0; scoreBad = 0; scoreMiss = 0; currentLiveScore = 0; totalComboBonusScore = 0;
+            } else {
+                // 接力模式：combo 跨曲連續保留，各曲判定數重置；totalComboBonusScore 也重置（每曲單獨計算加成）
+                scorePerfect = 0; scoreGreat = 0; scoreGood = 0; scoreBad = 0; scoreMiss = 0; currentLiveScore = 0; totalComboBonusScore = 0;
+                if (isTrueMarathonMode) {
+                    marathonIndicatorEl.innerText = `🌟 真．接力 第 ${marathonCurrentStage} / ${marathonTotalStages} 首`;
+                } else {
+                    marathonIndicatorEl.innerText = isEndlessMode ? `♾️ 第 ${marathonCurrentStage} 首` : `🏃 第 ${marathonCurrentStage} / ${marathonTotalStages} 首`;
+                }
+            }
+
+            lastJudgmentText = ""; judgmentTimer = 0; 
+            chartData.notes.forEach(note => note.hit = false);
+
+            
+            const customFallTime = 2.15 - (gameConfig.fallSpeed * 0.15); 
+            chartData.fallTime = customFallTime;
+            
+            // 解碼完成後才切換到倒數狀態，避免音訊解碼搶佔主執行緒造成卡頓
+            countdownValue = 3; countdownTimeLeft = 3.0; gameTimeProgress = -customFallTime; isAudioStarted = false;
+            countdownState = "COUNTDOWN";
+            // gameLoop 已在上方啟動，此處無需再 requestAnimationFrame
+        }
+
+        function commitAudioPlayback() {
+            if (isAudioStarted) return; isAudioStarted = true;
+            try {
+                audioSource = audioContext.createBufferSource(); audioSource.buffer = audioBuffer;
+                musicGainNode = musicGainNode = audioContext.createGain(); musicGainNode.gain.setValueAtTime(gameConfig.musicVolume, audioContext.currentTime);
+                audioSource.connect(musicGainNode); musicGainNode.connect(audioContext.destination); 
+                
+                let offsetTime = Math.max(0, gameTimeProgress);
+                if (offsetTime < audioBuffer.duration) {
+                    audioSource.start(0, offsetTime);
+                }
+            } catch(e){}
+        }
+
+        function parseLRC(text) {
+            lyrics = []; if (!text) return;
+            text.split('\n').forEach(line => {
+                const match = /\[(\d+):(\d+)(?:\.(\d+))?\](.*)/.exec(line.trim());
+                if (match) { let ms = match[3] ? parseInt(match[3]) : 0; if (match[3] && match[3].length === 2) ms *= 10; lyrics.push({ time: parseInt(match[1]) * 60 + parseInt(match[2]) + (ms / 1000), text: match[4].trim() }); }
+            });
+            lyrics.sort((a, b) => a.time - b.time);
+        }
+
+        function updateScoreAndComboBonus(noteJudgmentWeight) {
+            if (!chartData || !chartData.notes || chartData.notes.length === 0) return;
+            const N = chartData.notes.length;
+            if (isMarathonMode) {
+                // 接力：每首歌基礎分佔 990000/曲數，Combo 加成共 10000 分
+                const totalSongs = isEndlessMode ? Math.max(marathonCurrentStage, 1) : Math.max(marathonTotalStages, 1);
+                const perSongBaseMax = 990000 / totalSongs;
+                const liveBaseScore = ((scorePerfect * 1.0) + (scoreGreat * 0.75) + (scoreGood * 0.40)) * (perSongBaseMax / N);
+                if (noteJudgmentWeight > 0) {
+                    const estTotalNotes = Math.max(marathonCumulativeNotes + N, 1);
+                    const comboBonusMax = 10000 / ((estTotalNotes * (estTotalNotes + 1)) / 2);
+                    totalComboBonusScore += combo * comboBonusMax * noteJudgmentWeight;
+                }
+                currentLiveScore = Math.floor(liveBaseScore + totalComboBonusScore);
+            } else {
+                const baseNoteMax = 900000 / N;
+                const liveBaseScore = ((scorePerfect * 1.0) + (scoreGreat * 0.75) + (scoreGood * 0.40)) * baseNoteMax;
+                if (noteJudgmentWeight > 0) { const comboBonusMax = 100000 / ((N * (N + 1)) / 2); totalComboBonusScore += combo * comboBonusMax * noteJudgmentWeight; }
+                currentLiveScore = Math.floor(liveBaseScore + totalComboBonusScore);
+                if (currentLiveScore > 1000000) currentLiveScore = 1000000;
+            }
+        }
+
+        function triggerTrackHit(track) {
+            if (countdownState === "COUNTDOWN" || countdownState === "RESUME_COUNTDOWN" || isPaused) return; trackKeyPressed[track] = true;
+            const currentTime = gameTimeProgress + (chartData.audioOffset || 0.035);
+            let targetNote = null; let minDiff = Infinity; let rawDiff = 0;
+            
+            // 效能最佳化：從 activeNoteIndex 稍微回溯幾格開始搜尋，
+            // 避免邊界音符剛被 MISS 指針「吞掉」前玩家輸入被漏判
+            if (chartData && chartData.notes) {
+                const maxSearchTime = currentTime + 0.5;
+                const searchStart = Math.max(0, activeNoteIndex - 3); // 回溯最多 3 個音符
+                for (let i = searchStart; i < chartData.notes.length; i++) {
+                    const note = chartData.notes[i];
+                    if (note.time > maxSearchTime) break; // 太遠了，直接中斷搜尋
+                    if (note.track === track && !note.hit) {
+                        let diff = Math.abs(note.time - currentTime);
+                        if (diff < minDiff) {
+                            minDiff = diff;
+                            targetNote = note;
+                            rawDiff = note.time - currentTime;
+                        }
+                    }
+                }
+            }
+            
+            // 🔊 只有「有音符存在且被實際判定到」時才發出音效（原本只要按下就會發出，現在純空按不再有聲音）
+            if (targetNote) {
+                if (rawDiff > 0.16 && rawDiff <= 0.40) { 
+                    targetNote.hit = true; lastJudgmentText = "TOO EARLY (BAD)"; judgmentColor = "#ff55aa"; combo = 0; scoreBad++; judgmentTimer = 25; updateScoreAndComboBonus(0);
+                    playBreakSound();
+                } else if (minDiff <= 0.16) {
+                    targetNote.hit = true;
+                    if (minDiff <= 0.045) { lastJudgmentText = "PERFECT"; judgmentColor = "#00e5ff"; scorePerfect++; combo++; updateScoreAndComboBonus(1.0); playHitSound(); } 
+                    else if (minDiff <= 0.09) { lastJudgmentText = "GREAT"; judgmentColor = "#00ff00"; scoreGreat++; combo++; updateScoreAndComboBonus(0.75); playHitSound(); } 
+                    else if (minDiff <= 0.13) { lastJudgmentText = "GOOD"; judgmentColor = "#ff9800"; scoreGood++; combo++; updateScoreAndComboBonus(0.40); playHitSound(); } 
+                    else { lastJudgmentText = "BAD"; judgmentColor = "#ff55aa"; scoreBad++; combo = 0; updateScoreAndComboBonus(0); playBreakSound(); }
+                    if(combo > maxCombo) maxCombo = combo; judgmentTimer = 25;
+                }
+            }
+        }
+
+        function releaseTrackHit(track) { trackKeyPressed[track] = false; }
+
+        function renderResultSpeed() {
+            document.getElementById('result-speed').innerText = `⚡ 速度: ${parseFloat(gameConfig.fallSpeed).toFixed(1)} 速`;
+        }
+
+        function showResultPage(pageNum) {
+            document.getElementById('result-page-1').style.display = pageNum === 1 ? 'flex' : 'none';
+            document.getElementById('result-page-2').style.display = pageNum === 2 ? 'flex' : 'none';
+        }
+        document.getElementById('result-next-btn').addEventListener('click', () => showResultPage(2));
+        document.getElementById('result-prev-btn').addEventListener('click', () => showResultPage(1));
+        document.getElementById('result-back-btn-2').addEventListener('click', () => { document.getElementById('result-screen').style.display = 'none'; stopGameAndReturn(); });
+
+        function showResultScreen() {
+            if (isMarathonMode) { showMarathonFinalResult(); return; } isPlaying = false; if (audioSource) { try { audioSource.stop(); } catch(e){} }
+            const songInfoLine = `${currentPlayingName || "未知歌曲"} ｜ 難度：${currentPlayingDiffLabel}`;
+            document.getElementById('result-marathon-songlist').style.display = 'none';
+            const highlightEl = document.getElementById('result-marathon-highlight');
+            if (isRandomSingleMode) {
+                // 🎲 隨機模式結算：比照接力結算風格，額外標示所選難度篩選與是否為真．隨機
+                document.getElementById('result-screen-title').innerText = "🎲 隨機挑戰結算";
+                document.getElementById('result-song-info').innerText = songInfoLine;
+                document.getElementById('result-song-info-2').innerText = songInfoLine;
+                highlightEl.style.display = 'block';
+                highlightEl.innerText = `🎲 已選難度：${diffFilterLabel(randomModeTargetDiff)} ｜ 真．隨機：${isTrueRandomExtraActive ? '是' : '否'}`;
+            } else {
+                document.getElementById('result-screen-title').innerText = "🎵 挑戰結算報告";
+                document.getElementById('result-song-info').innerText = songInfoLine;
+                document.getElementById('result-song-info-2').innerText = songInfoLine;
+                highlightEl.style.display = 'none';
+            }
+            renderResultSpeed();
+            
+            let totalActiveNotes = scorePerfect + scoreGreat + scoreGood + scoreBad + scoreMiss;
+            const isSingleAP = (scorePerfect > 0 && scoreGreat === 0 && scoreGood === 0 && scoreBad === 0 && scoreMiss === 0);
+            const isSingleFC = (totalActiveNotes > 0 && scorePerfect + scoreGreat + scoreGood > 0 && scoreBad === 0 && scoreMiss === 0);
+            
+            applyRankStyle(currentLiveScore, isSingleFC, isSingleAP, 'result-rank');
+            const accuracyPct = totalActiveNotes > 0 ? ((scorePerfect * 1.0 + scoreGreat * 0.75 + scoreGood * 0.40) / totalActiveNotes * 100) : 0;
+            saveHighScoreRecord(currentPlayingKeyId, currentPlayingDiffLabel, currentLiveScore, `${accuracyPct.toFixed(2)}%`);
+            document.getElementById('res-score').innerText = currentLiveScore; document.getElementById('res-maxcombo').innerText = maxCombo;
+            document.getElementById('res-percentage').innerText = `${accuracyPct.toFixed(2)}%`;
+            document.getElementById('res-perfect').innerText = scorePerfect; document.getElementById('res-great').innerText = scoreGreat; 
+            document.getElementById('res-good').innerText = scoreGood; document.getElementById('res-bad').innerText = scoreBad; document.getElementById('res-miss').innerText = scoreMiss;
+            showResultPage(1);
+            document.getElementById('ingame-panel').style.display = 'none'; document.getElementById('touch-overlay').style.display = 'none'; document.getElementById('result-screen').style.display = 'flex';
+        }
+
+        document.getElementById('result-back-btn').addEventListener('click', () => { document.getElementById('result-screen').style.display = 'none'; stopGameAndReturn(); });
+        
+        function doPauseGame() {
+            if (!isPlaying || isPaused || isMarathonMode || countdownState === "COUNTDOWN" || countdownState === "RESUME_COUNTDOWN") return;
+            isPaused = true; if (audioSource) { try { audioSource.stop(); } catch(e){} try { audioSource.disconnect(); } catch(e){} audioSource = null; isAudioStarted = false; }
+            const pb = document.getElementById('pause-lyrics-toggle'); pb.textContent = gameConfig.showLyrics ? '開啟' : '關閉'; pb.style.background = gameConfig.showLyrics ? '#00c853' : '#555';
+            const bs = document.getElementById('pause-break-sound-toggle'); bs.textContent = gameConfig.breakSoundEnabled ? '開啟' : '關閉'; bs.style.background = gameConfig.breakSoundEnabled ? '#00c853' : '#555';
+            document.getElementById('pause-menu').style.display = 'block';
+        }
+        document.getElementById('pause-btn').addEventListener('click', () => { if (isMarathonMode) { abortMarathonNow(); } else { doPauseGame(); } });
+
+        // 🖱️ 暫停時按住右鍵可暫時隱藏暫停選單，偷看後面的畫面
+        document.addEventListener('contextmenu', (e) => { if (isPaused) e.preventDefault(); });
+        document.addEventListener('mousedown', (e) => {
+            if (e.button === 2 && isPaused) {
+                e.preventDefault();
+                document.getElementById('pause-menu').style.display = 'none';
+            }
+        });
+        function restorePauseMenuPeek(e) {
+            if ((e.button === undefined || e.button === 2) && isPaused) {
+                document.getElementById('pause-menu').style.display = 'block';
+            }
+        }
+        document.addEventListener('mouseup', restorePauseMenuPeek);
+        window.addEventListener('blur', restorePauseMenuPeek);
+        
+        function abortMarathonNow() {
+            document.getElementById('pause-menu').style.display = 'none';
+            // 無盡模式放棄：若已完成過至少一關（有最高分紀錄），結算取最高分那一關；一關都沒完成則直接退出，不顯示結算
+            if (isMarathonMode && isEndlessMode && marathonHighestStageScore >= 0) {
+                showResultScreen(); 
+            } else {
+                stopGameAndReturn(); 
+            }
+        }
+        document.getElementById('abort-btn').addEventListener('click', abortMarathonNow);
+
+        function stopGameAndReturn() {
+            isPlaying = false; isPaused = false; isMarathonMode = false; countdownState = "NONE";
+            isRandomSingleMode = false;
+            if (audioSource) { try { audioSource.stop(); } catch(e){} try { audioSource.disconnect(); } catch(e){} audioSource = null; }
+            setMarathonIndicatorVisible(false);
+            document.getElementById('game-container').style.display = 'none'; document.getElementById('setup-container').style.display = 'block';
+            restoreKeysAndSpeedAfterRandom(); // 🔄 若剛才是「真•隨機」模式，離開時把速度還原回去
+        }
+
+        function resizeGameCanvas() {
+            const container = document.getElementById('game-container'); const w = window.innerWidth, h = window.innerHeight; isPortraitMode = h > w;
+            if (isPortraitMode) {
+                canvasW = w; canvasH = h; container.style.width = "100vw"; container.style.height = "100vh"; canvas.width = canvasW; canvas.height = canvasH;
+                lyricContainerEl.style.bottom = "18%"; lyricContainerEl.style.top = "auto";
+                document.getElementById('ingame-panel').style.top = "20px"; document.getElementById('ingame-panel').style.left = "20px"; document.getElementById('ingame-panel').style.right = "auto"; document.getElementById('ingame-panel').style.bottom = "auto";
+            } else {
+                canvasW = 1024; canvasH = 576; container.style.width = "1024px"; container.style.height = "576px"; canvas.width = canvasW; canvas.height = canvasH;
+                lyricContainerEl.style.top = "270px"; lyricContainerEl.style.bottom = "auto";
+                document.getElementById('ingame-panel').style.bottom = "25px"; document.getElementById('ingame-panel').style.right = "25px"; document.getElementById('ingame-panel').style.left = "auto"; document.getElementById('ingame-panel').style.top = "auto";
+            }
+            setupTouchOverlayZones();
+        }
+
+        function setupTouchOverlayZones() {
+            const overlay = document.getElementById('touch-overlay'); overlay.innerHTML = ""; overlay.style.display = "block";
+            let laneWidth = isPortraitMode ? (canvasW / 4) : 160;
+            let internalXs = isPortraitMode ? [laneWidth*0.5, laneWidth*1.5, laneWidth*2.5, laneWidth*3.5] : [180, 360, 664, 844];
+            for (let i = 0; i < 4; i++) {
+                const zone = document.createElement('div'); zone.className = 'touch-zone';
+                zone.style.left = `${((internalXs[i] - laneWidth/2) / canvasW) * 100}%`; zone.style.width = `${(laneWidth / canvasW) * 100}%`; zone.style.top = "0"; zone.style.height = "100%";
+                zone.addEventListener('touchstart', (e) => { e.preventDefault(); triggerTrackHit(i); }); zone.addEventListener('touchend', (e) => { e.preventDefault(); releaseTrackHit(i); });
+                overlay.appendChild(zone);
+            }
+        }
+        window.addEventListener('resize', () => { if (isPlaying) resizeGameCanvas(); });
+
+        function gameLoop(timestamp) {
+            if (!isPlaying || isPaused) return; 
+            const dt = (timestamp - lastTimestamp) / 1000; lastTimestamp = timestamp; 
+
+            if (countdownState === "LOADING") {
+                setMarathonIndicatorVisible(false);
+                ctx.fillStyle = '#09090d'; ctx.fillRect(0, 0, canvasW, canvasH); drawTracksAndCircles(); 
+                ctx.fillStyle = 'rgba(5, 5, 10, 0.8)'; ctx.fillRect(0, 0, canvasW, canvasH); 
+                ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff'; ctx.font = 'bold 30px "Microsoft JhengHei"'; 
+                ctx.fillText(`🎵 ${currentPlayingName}`, canvasW / 2, canvasH / 2 - 40);
+                ctx.fillStyle = '#aaa'; ctx.font = '16px "Microsoft JhengHei"'; ctx.fillText(`正在解碼音訊中，請稍候...`, canvasW / 2, canvasH / 2 + 20);
+                setLyricContainerVisible(false);
+                requestAnimationFrame(gameLoop); return;
+            }
+            
+            if (countdownState === "COUNTDOWN") {
+                setMarathonIndicatorVisible(false);
+                countdownTimeLeft -= dt; countdownValue = Math.ceil(countdownTimeLeft);
+                ctx.fillStyle = '#09090d'; ctx.fillRect(0, 0, canvasW, canvasH); drawTracksAndCircles(); 
+                ctx.fillStyle = 'rgba(5, 5, 10, 0.75)'; ctx.fillRect(0, 0, canvasW, canvasH); 
+                ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff'; ctx.font = 'bold 34px "Microsoft JhengHei"'; 
+                ctx.fillText(`🎵 ${currentPlayingName}`, canvasW / 2, canvasH / 2 - 75);
+                ctx.fillStyle = '#e040fb'; ctx.font = currentPlayingSinger.length > 25 ? '15px "Microsoft JhengHei"' : '18px "Microsoft JhengHei"'; 
+                ctx.fillText(`🎤 陣容: ${currentPlayingSinger}`, canvasW / 2, canvasH / 2 - 35);
+                
+                let diffColor = "#ff9800";
+                if (currentPlayingDiffLabel === "EASY") diffColor = "#4caf50";
+                if (currentPlayingDiffLabel === "HARD") diffColor = "#e91e63";
+                if (currentPlayingDiffLabel === "SPECIAL" || currentPlayingDiffLabel === "CUSTOM") diffColor = "#00e5ff";
+                
+                ctx.fillStyle = diffColor; ctx.font = 'bold 22px Arial'; ctx.fillText(`[ DIFFICULTY: ${currentPlayingDiffLabel} ]`, canvasW / 2, canvasH / 2 + 5);
+                ctx.fillStyle = '#aaa'; ctx.font = 'bold 14px Arial'; ctx.fillText(`速度: ${gameConfig.fallSpeed} 速`, canvasW / 2, canvasH / 2 + 35);
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 75px Arial'; ctx.fillText(countdownValue > 0 ? countdownValue : "GO!", canvasW / 2, canvasH / 2 + 125);
+                
+                if (countdownTimeLeft <= 0) { countdownState = "NONE"; }
+                setLyricContainerVisible(false);
+                requestAnimationFrame(gameLoop); return;
+            }
+
+            if (countdownState === "RESUME_COUNTDOWN") {
+                setMarathonIndicatorVisible(false);
+                countdownTimeLeft -= dt; countdownValue = Math.ceil(countdownTimeLeft);
+                ctx.fillStyle = '#09090d'; ctx.fillRect(0, 0, canvasW, canvasH); drawTracksAndCircles(); 
+                
+                const fallTime = chartData.fallTime || 1.0;
+                const currentTime = gameTimeProgress + (chartData.audioOffset || 0.035);
+                const liveTrackXs = getLiveTrackXs();
+                const liveJudgmentY = isPortraitMode ? (canvasH - 120) : 460;
+                const liveRadius = isPortraitMode ? (canvasW / 10) : 24;
+                
+                if (chartData && chartData.notes) {
+                    const maxRenderTime = currentTime + Math.max(fallTime * 3, 1.5);
+                    for (let i = activeNoteIndex; i < chartData.notes.length; i++) {
+                        const note = chartData.notes[i];
+                        if (note.time > maxRenderTime) break; 
+                        if (!note.hit && note.time >= currentTime) {
+                            const remain = note.time - currentTime; const y = liveJudgmentY * (1 - (remain / fallTime)); const x = liveTrackXs[note.track];
+                            if (y >= 0 && y <= canvasH) {
+                                ctx.beginPath(); ctx.arc(x, y, liveRadius, 0, Math.PI * 2); ctx.fillStyle = '#ffdf00'; ctx.fill();
+                                ctx.beginPath(); ctx.arc(x, y, liveRadius - 8, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+                            }
+                        }
+                    }
+                }
+
+                ctx.fillStyle = 'rgba(5, 5, 10, 0.6)'; ctx.fillRect(0, 0, canvasW, canvasH);
+                ctx.textAlign = 'center'; ctx.fillStyle = '#00e5ff'; ctx.font = 'bold 85px Arial'; 
+                ctx.fillText(countdownValue > 0 ? countdownValue : "READY", canvasW / 2, canvasH / 2);
+                
+                if (countdownTimeLeft <= 0) { countdownState = "NONE"; }
+                setLyricContainerVisible(false);
+                requestAnimationFrame(gameLoop); return;
+            }
+            
+            setMarathonIndicatorVisible(isMarathonMode);
+            setLyricContainerVisible(gameConfig.showLyrics && lyrics.length > 0);
+            gameTimeProgress += dt; if (gameTimeProgress >= 0 && !isAudioStarted) commitAudioPlayback();
+            const currentTime = gameTimeProgress + (chartData.audioOffset || 0.035);
+            ctx.fillStyle = '#09090d'; ctx.fillRect(0, 0, canvasW, canvasH);
+            const liveJudgmentY = drawTracksAndCircles(); const liveRadius = isPortraitMode ? (canvasW / 10) : 24;
+            const liveTrackXs = getLiveTrackXs();
+
+            // 核心修改點：利用 activeNoteIndex 指針將時間已過去的音符標記為 MISS 並推進指針
+            if (chartData && chartData.notes) {
+                const fallTime = chartData.fallTime || 1.0;
+                
+                // 1. 自動判定過期音符（MISS）並推進起點指針，避免前端累積垃圾運算
+                // MISS 閾值設為 0.20（>BAD 命中窗 0.16），確保玩家輸入優先，不會發生「點到卻判 MISS」
+                while (activeNoteIndex < chartData.notes.length) {
+                    const currNote = chartData.notes[activeNoteIndex];
+                    if (currNote.hit) {
+                        activeNoteIndex++;
+                    } else if (isAutoModeActive && currentTime >= currNote.time) {
+                        // 自動模式：音符抵達判定點瞬間自動完美擊中
+                        currNote.hit = true;
+                        lastJudgmentText = "PERFECT";
+                        judgmentColor = "#00e5ff";
+                        scorePerfect++;
+                        combo++;
+                        if (combo > maxCombo) maxCombo = combo;
+                        judgmentTimer = 25;
+                        updateScoreAndComboBonus(1.0);
+                        trackKeyPressed[currNote.track] = true;
+                        setTimeout(() => { trackKeyPressed[currNote.track] = false; }, 90);
+                        activeNoteIndex++;
+                    } else if (currentTime > currNote.time + 0.20) {
+                        currNote.hit = true; 
+                        lastJudgmentText = "MISS"; 
+                        judgmentColor = "#ff3333"; 
+                        combo = 0; 
+                        scoreMiss++; 
+                        judgmentTimer = 25; 
+                        updateScoreAndComboBonus(0);
+                        playBreakSound();
+                        activeNoteIndex++;
+                    } else {
+                        break; // 最前面的音符都還沒過期，停止推進
+                    }
+                }
+
+                // 2. 只渲染畫面上「看得到」的區間音符
+                const maxVisibleTime = currentTime + Math.max(fallTime * 3, 1.5);
+                for (let i = activeNoteIndex; i < chartData.notes.length; i++) {
+                    const note = chartData.notes[i];
+                    if (note.time > maxVisibleTime) break; // 超過畫面頂端的音符直接中斷，不走多餘運算
+                    
+                    if (!note.hit && note.time >= currentTime) {
+                        const remain = note.time - currentTime; const y = liveJudgmentY * (1 - (remain / fallTime)); const x = liveTrackXs[note.track];
+                        if (y >= 0 && y <= canvasH) {
+                            ctx.beginPath(); ctx.arc(x, y, liveRadius, 0, Math.PI * 2); ctx.fillStyle = '#ffdf00'; ctx.fill();
+                            ctx.beginPath(); ctx.arc(x, y, liveRadius - 8, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            if (judgmentTimer > 0) {
+                ctx.textAlign = 'center'; ctx.fillStyle = judgmentColor; ctx.font = 'bold 34px Arial'; ctx.fillText(lastJudgmentText, canvasW / 2, 100);
+                if (combo > 0) { ctx.fillStyle = '#ffffff'; ctx.font = 'bold 24px Arial'; ctx.fillText(`${combo} COMBO`, canvasW / 2, 145); }
+                judgmentTimer--;
+            }
+
+            if (gameConfig.showLyrics && lyrics.length > 0) {
+                if (gameTimeProgress >= 0) {
+                    // 套用歌詞偏移量：正值使歌詞延遲顯示，負值使歌詞提早顯示
+                    const lyricAdjTime = currentTime - (gameConfig.lyricOffset || 0);
+                    // 指標推進法：只往前找，不每幀重新從頭掃描整份歌詞陣列
+                    while (activeLyricIndex < lyrics.length - 1 && lyricAdjTime >= lyrics[activeLyricIndex + 1].time) {
+                        activeLyricIndex++;
+                    }
+                    const lyricStr = lyricAdjTime >= lyrics[activeLyricIndex].time ? lyrics[activeLyricIndex].text : "...";
+                    if (lyricTextElement.innerText !== lyricStr) lyricTextElement.innerText = lyricStr;
+                } else if (lyricTextElement.innerText !== "...") {
+                    lyricTextElement.innerText = "...";
+                }
+            } else if (lyrics.length === 0) {
+                setLyricContainerVisible(false);
+            }
+
+            // 核心修改點：接力模式顯示「累計總分」而非單曲分數，換歌時不歸零，而是在前面曲目已累計的基礎上繼續累加
+            const hudDisplayScore = isMarathonMode ? (marathonCumulativeScore + currentLiveScore) : currentLiveScore;
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 18px monospace'; ctx.textAlign = 'right'; ctx.fillText(String(hudDisplayScore).padStart(7, '0'), canvasW - 20, 30);
+            ctx.fillStyle = '#666680'; ctx.font = '13px monospace'; ctx.textAlign = 'left'; ctx.fillText(`⏱️ ${Math.max(0, currentTime).toFixed(1)}s | P:${scorePerfect} G:${scoreGreat} GD:${scoreGood} B:${scoreBad} M:${scoreMiss}`, 20, isPortraitMode ? 70 : 25);
+
+            if (isAutoModeActive) {
+                ctx.save();
+                ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255, 152, 0, 0.85)'; ctx.font = 'bold 22px Arial';
+                ctx.fillText('🤖 AUTOPLAY', canvasW / 2, isPortraitMode ? 40 : 25);
+                ctx.restore();
+            }
+
+            if (audioBuffer && gameTimeProgress >= audioBuffer.duration) { if (isMarathonMode) proceedMarathonNextStage(); else showResultScreen(); } 
+            else { requestAnimationFrame(gameLoop); }
+        }
+
+        function drawTracksAndCircles() {
+            const liveJudgmentY = isPortraitMode ? (canvasH - 120) : 460, liveRadius = isPortraitMode ? (canvasW / 10) : 24;
+            const liveTrackXs = getLiveTrackXs();
+            liveTrackXs.forEach((x, idx) => {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.01)'; ctx.fillRect(x - liveRadius, 0, liveRadius*2, canvasH);
+                ctx.strokeStyle = '#1f1f2e'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - liveRadius, 0); ctx.lineTo(x - liveRadius, canvasH); ctx.moveTo(x + liveRadius, 0); ctx.lineTo(x + liveRadius, canvasH); ctx.stroke(); 
+                if (trackKeyPressed[idx]) { ctx.beginPath(); ctx.arc(x, liveJudgmentY, liveRadius + 8, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0, 229, 255, 0.2)'; ctx.fill(); }
+                ctx.beginPath(); ctx.arc(x, liveJudgmentY, liveRadius, 0, Math.PI * 2); ctx.strokeStyle = trackKeyPressed[idx] ? '#ffffff' : '#00e5ff'; ctx.lineWidth = trackKeyPressed[idx] ? 4 : 2; ctx.stroke();
+            });
+            return liveJudgmentY;
+        }
+
+        // ====================================================================
+        //  🚀 初始化：把從 localStorage 讀回的設定套用到所有 UI 控制元件上
+        //  （音量滑桿、速度滑桿、歌詞開關）
+        // ====================================================================
+        function applyStoredConfigToUI() {
+            const musicPct = Math.round(gameConfig.musicVolume * 100);
+            const sfxPct = Math.round(gameConfig.sfxVolume * 100);
+            syncVolumeControls(musicPct, sfxPct);
+
+            document.getElementById('speed-slider').value = gameConfig.fallSpeed;
+            document.getElementById('speed-slider-dis').innerText = `${parseFloat(gameConfig.fallSpeed).toFixed(1)} 速`;
+
+            const lyOffsetVal = parseFloat(gameConfig.lyricOffset) || 0;
+            syncLyricOffsetUI(lyOffsetVal);
+
+            const lyricsBtn1 = document.getElementById('lyrics-toggle');
+            const lyricsBtn2 = document.getElementById('pause-lyrics-toggle');
+            [lyricsBtn1, lyricsBtn2].forEach(btn => {
+                if (!btn) return;
+                btn.textContent = gameConfig.showLyrics ? '開啟' : '關閉';
+                btn.style.background = gameConfig.showLyrics ? '#00c853' : '#555';
+            });
+
+            const ab = document.getElementById('auto-mode-toggle');
+            if (ab) { ab.textContent = gameConfig.autoMode ? '開啟' : '關閉'; ab.style.background = gameConfig.autoMode ? '#ff9800' : '#555'; }
+
+            const breakBtn1 = document.getElementById('break-sound-toggle');
+            const breakBtn2 = document.getElementById('pause-break-sound-toggle');
+            [breakBtn1, breakBtn2].forEach(btn => {
+                if (!btn) return;
+                btn.textContent = gameConfig.breakSoundEnabled ? '開啟' : '關閉';
+                btn.style.background = gameConfig.breakSoundEnabled ? '#00c853' : '#555';
+            });
+        }
+        applyStoredConfigToUI();
+
+        // 🛠️ 修正：選關或設定彈窗開啟時，主畫面（setup-container）物件仍可被點擊互動的 bug
+        // 透過監看彈窗 style 變化，自動鎖定/解鎖主畫面的滑鼠事件
+        (function setupModalBackdropFix() {
+            const setupContainer = document.getElementById('setup-container');
+            const levelModal = document.getElementById('level-modal');
+            const settingsModal = document.getElementById('settings-modal');
+            function updateSetupInteractivity() {
+                const blocked = (levelModal && levelModal.style.display === 'flex') ||
+                                 (settingsModal && settingsModal.style.display === 'flex');
+                setupContainer.style.pointerEvents = blocked ? 'none' : '';
+            }
+            [levelModal, settingsModal].forEach((modal) => {
+                if (!modal) return;
+                new MutationObserver(updateSetupInteractivity).observe(modal, { attributes: true, attributeFilter: ['style'] });
+            });
+            updateSetupInteractivity();
+        })();
+    </script>
+</body>
+</html>
