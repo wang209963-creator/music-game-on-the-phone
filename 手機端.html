@@ -2729,7 +2729,8 @@
         }
 
         function triggerTrackHit(track) {
-            if (countdownState === "COUNTDOWN" || countdownState === "RESUME_COUNTDOWN" || isPaused) return; trackKeyPressed[track] = true;
+            // 🛠️ 修正：自動模式開啟時，畫面（鍵盤/觸控）不應再能手動判定音符
+            if (isAutoModeActive || countdownState === "COUNTDOWN" || countdownState === "RESUME_COUNTDOWN" || isPaused) return; trackKeyPressed[track] = true;
             const currentTime = gameTimeProgress + (chartData.audioOffset || 0.035);
             let targetNote = null; let minDiff = Infinity; let rawDiff = 0;
             
